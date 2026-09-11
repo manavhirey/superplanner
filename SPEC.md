@@ -192,6 +192,10 @@ IDs embedded in the plan.
 Retained implementation starts only in a user-supplied complete non-shallow Git
 repository. A non-Git run stops after planning and hands the approved artifacts
 to the user. Superplanner does not initialize Git to cross this boundary.
+Supervised candidate-file execution additionally requires Linux in Operational
+v1: the same-principal four-property isolation verdict cannot be honestly
+attested on stock macOS, so those dispatches and custody leases are Linux-only
+and fail closed elsewhere.
 
 Before implementation, the orchestrator applies the using-git-worktrees skill:
 

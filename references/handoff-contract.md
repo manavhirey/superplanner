@@ -85,9 +85,12 @@ paths beneath them; sets `OPENCODE_DISABLE_PROJECT_CONFIG=1` and
 provider-related endpoint; and leaves every other `OPENCODE_*` override unset.
 It attests those variables and OpenCode's resolved config, data, cache, state,
 temp, config-file, and database paths, not only the requested environment.
-Because OpenCode CLI rejects `mode: subagent` for `--agent`, the
-supervisor generates a runtime primary wrapper from the exact specialist
-definition, changing only `mode` and a collision-free runtime name. It hashes
+Because OpenCode CLI does not reject `mode: subagent` for `--agent` — it
+warns and silently falls back to the default primary agent, which has a
+different permission surface — the supervisor never launches a subagent
+definition directly. It generates a runtime primary wrapper from the exact
+specialist definition, changing only `mode` and a collision-free runtime
+name. It hashes
 both definitions and the resolved permission manifest, selects that wrapper
 explicitly, and verifies the session's actual agent before accepting output. It
 returns the exact OpenCode session ID and terminal result. Persist the source

@@ -89,6 +89,15 @@ own subagents or edit external `STATE.md`.
 
 ## Prerequisites
 
+- **Platform support (Operational v1).** Linux is required for supervised
+  candidate-file specialists, retained implementation, commit, SHA-bound
+  reviews, and push-command eligibility; those phases run under
+  kernel-enforced user-namespace isolation. macOS supports coordinator
+  intake, spike, bounded-design, and planning flows. The same-principal
+  four-property isolation verdict cannot be honestly attested on stock
+  macOS with public APIs, so supervised candidate-file dispatch and custody
+  leases are Linux-only in v1; a failed or missing verdict always blocks
+  startup rather than degrading.
 - A current OpenCode installation that supports Markdown agents,
   `skills.paths`, named `references`, agent `variant`, and pattern permissions.
 - An isolation supervisor implementing the exact spawn, private-`HOME`/XDG/temp
