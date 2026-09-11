@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Superplanner System Design</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a1824'/%3E%3Cpath d='M15 18h34M15 32h23M15 46h29' stroke='%23f2b84b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #07131d;
+      --surface: #0c1d2a;
+      --surface-2: #102735;
+      --line: #294656;
+      --line-bright: #4c7183;
+      --text: #e9f2f4;
+      --muted: #9db2ba;
+      --amber: #f2b84b;
+      --teal: #52c7b8;
+      --blue: #76a9e8;
+      --red: #e27676;
+      --green: #7fcf91;
+      --shadow: rgba(0, 0, 0, .28);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #edf3f3;
+        --surface: #f8fbfa;
+        --surface-2: #e5efee;
+        --line: #afc2c6;
+        --line-bright: #78969e;
+        --text: #13252d;
+        --muted: #526c75;
+        --amber: #9a6500;
+        --teal: #087d72;
+        --blue: #285f9f;
+        --red: #a93f3f;
+        --green: #267a3d;
+        --shadow: rgba(34, 61, 69, .14);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        var(--bg);
+      background-size: 40px 40px;
+      font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: var(--teal); }
+
+    .shell {
+      width: min(1240px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 36px 0 72px;
+    }
+
+    .masthead {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(28px, 6vw, 72px);
+      border: 1px solid var(--line-bright);
+      background: color-mix(in srgb, var(--surface) 95%, transparent);
+      box-shadow: 12px 12px 0 var(--shadow);
+    }
+
+    .masthead::after {
+      content: "SP / 01";
+      position: absolute;
+      top: 22px;
+      right: 26px;
+      color: var(--amber);
+      font: 600 12px/1 "IBM Plex Mono", "SFMono-Regular", monospace;
+      letter-spacing: .18em;
+    }
+
+    .eyebrow, .label {
+      color: var(--amber);
+      font: 600 12px/1.2 "IBM Plex Mono", "SFMono-Regular", monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 { margin: 0; text-wrap: balance; }
+
+    h1 {
+      max-width: 850px;
+      margin-top: 18px;
+      font-size: clamp(44px, 8vw, 96px);
+      font-weight: 650;
+      letter-spacing: -.055em;
+      line-height: .96;
+    }
+
+    h1 span { color: var(--teal); }
+
+    .lede {
+      max-width: 720px;
+      margin: 28px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 22px);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      margin-top: 30px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .metric { padding: 18px; background: var(--surface); }
+    .metric strong { display: block; color: var(--amber); font-size: 26px; }
+    .metric span { color: var(--muted); font-size: 13px; }
+
+    nav {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin: 20px 0 0;
+      padding: 8px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(12px);
+    }
+
+    nav a {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      font: 600 12px/1 "IBM Plex Mono", "SFMono-Regular", monospace;
+      text-decoration: none;
+    }
+
+    nav a:hover, nav a:focus-visible {
+      color: var(--text);
+      border-color: var(--line-bright);
+      outline: none;
+    }
+
+    section {
+      margin-top: 58px;
+      scroll-margin-top: 80px;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    h2 { font-size: clamp(28px, 4vw, 48px); letter-spacing: -.035em; }
+
+    .panel {
+      border: 1px solid var(--line-bright);
+      background: color-mix(in srgb, var(--surface) 96%, transparent);
+      box-shadow: 7px 7px 0 var(--shadow);
+    }
+
+    .pipeline { padding: clamp(18px, 3vw, 34px); overflow-x: auto; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      min-width: 940px;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 170px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .stage:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      z-index: 2;
+      color: var(--amber);
+      font: 700 18px/1 monospace;
+      transform: translateY(-50%);
+    }
+
+    .stage .num { color: var(--amber); font: 600 12px/1 monospace; }
+    .stage h3 { margin-top: 18px; font-size: 18px; }
+    .stage p { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+    .card {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .card h3 { margin-top: 14px; font-size: 20px; }
+    .card p { color: var(--muted); }
+    .card code { color: var(--teal); overflow-wrap: break-word; }
+
+    .model { border-top: 3px solid var(--blue); }
+    .review { border-top: 3px solid var(--red); }
+    .docs { border-top: 3px solid var(--green); }
+
+    .monitor-layout {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 16px;
+    }
+
+    .monitor-flow { padding: 26px; }
+
+    .checkpoint {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .checkpoint:last-child { border-bottom: 0; }
+
+    .checkpoint b {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-bright);
+      color: var(--amber);
+      font-family: monospace;
+    }
+
+    .checkpoint p { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
+
+    .signal-list { margin: 0; padding: 22px 22px 22px 42px; }
+    .signal-list li { margin: 10px 0; color: var(--muted); }
+
+    .gate {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: clamp(18px, 3vw, 34px);
+    }
+
+    .gate-step {
+      min-height: 145px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .gate-step strong { color: var(--teal); }
+    .gate-step p { color: var(--muted); font-size: 14px; }
+    .arrow { color: var(--amber); font: 700 24px/1 monospace; }
+
+    .warning {
+      margin-top: 14px;
+      padding: 15px 18px;
+      border-left: 4px solid var(--red);
+      background: color-mix(in srgb, var(--red) 10%, var(--surface));
+      color: var(--muted);
+    }
+
+    .artifacts {
+      padding: 24px;
+      font: 14px/1.8 "IBM Plex Mono", "SFMono-Regular", monospace;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 70px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line-bright);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1050px) {
+      .gate { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); justify-self: center; }
+    }
+
+    @media (max-width: 850px) {
+      .metrics, .grid { grid-template-columns: repeat(2, 1fr); }
+      .monitor-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 1240px); padding-top: 10px; }
+      .masthead { padding: 28px 20px; box-shadow: 5px 5px 0 var(--shadow); }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .section-head { grid-template-columns: 1fr; gap: 8px; }
+      .grid { grid-template-columns: 1fr; }
+      nav { top: 4px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="eyebrow">OpenCode orchestration blueprint</div>
+      <h1>From large ideas to <span>reviewed execution.</span></h1>
+      <p class="lede">Superplanner turns ambiguous initiatives into approved designs, user-approved features and Gherkin-backed tasks, durable approved plans, isolated implementation, synchronized documentation, and SHA-bound review evidence.</p>
+      <div class="metrics" aria-label="System summary">
+        <div class="metric"><strong>10</strong><span>specialized agents</span></div>
+        <div class="metric"><strong>8</strong><span>maximum parallel workers</span></div>
+        <div class="metric"><strong>2</strong><span>mandatory review gates</span></div>
+        <div class="metric"><strong>1</strong><span>orchestrator-owned state</span></div>
+      </div>
+    </header>
+
+    <nav aria-label="Design sections">
+      <a href="#flow">Flow</a>
+      <a href="#agents">Agents</a>
+      <a href="#monitoring">Monitoring</a>
+      <a href="#artifacts">Artifacts</a>
+      <a href="#quality">Quality gate</a>
+    </nav>
+
+    <section id="flow">
+      <div class="section-head"><div class="label">01 / Pipeline</div><h2>Artifacts move forward. Assumptions do not.</h2></div>
+      <div class="panel pipeline">
+        <div class="flow" role="img" aria-label="Superplanner workflow from intake through review">
+          <article class="stage"><span class="num">00</span><h3>Route</h3><p>Classify scope and complexity. Select simple or complex entry.</p></article>
+          <article class="stage"><span class="num">01</span><h3>Design</h3><p>Approve direction, write Markdown plus its HTML companion, then record approval of the exact Markdown content ID.</p></article>
+          <article class="stage"><span class="num">02</span><h3>Define</h3><p>User approval is written to candidate artifacts by fresh planner <code>RECORD_DECOMPOSITION_APPROVAL</code>.</p></article>
+          <article class="stage"><span class="num">03</span><h3>Plan</h3><p>Fresh builder <code>RECORD_PLAN_APPROVAL</code> records user approval before <code>EXECUTE</code>.</p></article>
+          <article class="stage"><span class="num">04</span><h3>Execute</h3><p>Shell-free isolated writers, index-only initial submodule detection with independent child mirror/bootstrap and object routes, coordinator-brokered checks, quarantined packaging, integration, verification, and docs.</p></article>
+          <article class="stage"><span class="num">05</span><h3>Gate</h3><p>Run non-mutating <code>COMMIT_PREPARE</code>, authorize exact <code>COMMIT</code>, review its expected OID, then present only the bound non-force command for user execution.</p></article>
+        </div>
+      </div>
+      <div class="warning"><strong>Durable approval:</strong> remove the one exact <code>superplanner-approval:start</code>/<code>end</code> marker pair and all enclosed bytes from the exact UTF-8 artifact, preserve every outside byte, then record <code>sha256:&lt;64 lowercase hex&gt;</code>. SHA-256 covers non-Git artifact/evidence checksums; repository OIDs use that repository's SHA-1 or SHA-256 format. All five candidate approval fields and external mirrors must match; state alone cannot authorize the next gate.</div>
+      <div class="warning"><strong>Git boundary:</strong> non-Git work stops after spike, design, or planning, including decomposition. Retained implementation, commits, SHA-bound reviews, and push eligibility require a complete non-shallow Git repository supplied by the user using the files ref backend. Trusted non-Git parsing validates its repository/object/ref-format tuple from immutable config bytes and proves the common-directory <code>shallow</code> path absent. The non-local clone transfers objects, then a trusted non-Git serializer reconstructs the private mirror's exact refs, symrefs, and <code>HEAD</code> from stable source manifests before use. Reftable and invalid, unknown, redirected, or shallow repository state blocks. Superplanner never initializes Git.</div>
+    </section>
+
+    <section id="agents">
+      <div class="section-head"><div class="label">02 / Roles</div><h2>Thin coordination. Deep specialists.</h2></div>
+      <div class="grid">
+        <article class="card model"><div class="label">Entry</div><h3>Complex orchestrators</h3><p><code>gpt-5.6-sol / xhigh</code> is primary. <code>glm-5.3 / max</code> is a coordinator alternative, not a provider fallback; OpenAI specialist routes remain.</p></article>
+        <article class="card model"><div class="label">Entry</div><h3>Quick orchestrator</h3><p>Bounded work runs on <code>glm-5.3 / max</code> with the same approval and review discipline.</p></article>
+        <article class="card"><div class="label">Discovery</div><h3>Brainstormer</h3><p><code>gpt-5.6-sol / high</code> inspects the repository, asks one material question at a time, and produces the approved design.</p></article>
+        <article class="card"><div class="label">Definition</div><h3>Planner</h3><p><code>gpt-5.6-sol / xhigh</code> creates feature, task, and Gherkin artifacts and records their user approval in a fresh invocation.</p></article>
+          <article class="card"><div class="label">Delivery</div><h3>Isolated writers</h3><p>All five candidate-file specialists run through a required isolation supervisor in re-rooted, private, process-sandboxed OpenCode instances using a distinct OS security principal or attested kernel-enforced same-principal isolation across filesystem access, process inspection/control, inherited descriptors, and privilege escalation. A credential-isolating inference broker supplies remote-model responses while persisted approvals, custom providers, shell, and sensitive external paths remain denied; the coordinator packages integration-bound results into external Git storage.</p></article>
+        <article class="card docs"><div class="label">Truth</div><h3>Documenter</h3><p>Fact-checks repository behavior and makes documentation match the integrated state.</p></article>
+        <article class="card review"><div class="label">Gate 1</div><h3>Code reviewer</h3><p><code>gpt-5.6-sol / high</code> reviews fresh context against design, tasks, acceptance scenarios, plan, tests, and Python quality rules.</p></article>
+        <article class="card review"><div class="label">Gate 2</div><h3>Adversarial reviewer</h3><p><code>openrouter/moonshotai/kimi-k3</code> at maximum reasoning tries to disprove correctness before a user-executed push command can be presented.</p></article>
+        <article class="card"><div class="label">Control plane</div><h3>External orchestrator state</h3><p>Only the orchestrator writes approval mirrors, commit authorization, canonical results, review SHAs, and recovery history.</p></article>
+      </div>
+    </section>
+
+    <section id="monitoring">
+      <div class="section-head"><div class="label">03 / Recovery</div><h2>Detect stalled work without assuming live control.</h2></div>
+      <div class="monitor-layout">
+        <div class="panel monitor-flow">
+          <div class="checkpoint"><b>1</b><div><strong>Define evidence</strong><p>Every dispatch names a stable workflow task ID, captures the supervisor-returned OpenCode session ID, and defines milestones, expected output, and a step or execution budget.</p></div></div>
+          <div class="checkpoint"><b>2</b><div><strong>Use foreground handoffs</strong><p>Foreground supervisor invocations cannot be live-polled or stopped unless the supervisor advertises those controls. Canonical status is only complete or blocked.</p></div></div>
+          <div class="checkpoint"><b>3</b><div><strong>Resume first</strong><p>Resume with the generated OpenCode session ID, never the stable workflow ID, and one focused next action.</p></div></div>
+          <div class="checkpoint"><b>4</b><div><strong>Use optional controls deliberately</strong><p>Only an explicitly capable harness may expose live status, cancellation, and five-to-ten-minute checks.</p></div></div>
+          <div class="checkpoint"><b>5</b><div><strong>Replace safely</strong><p>Replace only after invocation end or failure, or supported cancellation confirms inactivity; otherwise escalate.</p></div></div>
+        </div>
+        <div class="panel">
+          <ol class="signal-list">
+            <li>A harness timeout event becomes a blocked handoff with timeout evidence.</li>
+            <li>The worker-enforced step or execution budget is exhausted.</li>
+            <li>The same failed action is reported twice without new evidence.</li>
+            <li>Two live checks show no progress, only when status capability exists.</li>
+            <li>Unavailable input, permission, or exclusive state prevents progress.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="artifacts">
+      <div class="section-head"><div class="label">04 / Files</div><h2>A durable trail from intent to evidence.</h2></div>
+      <pre class="panel artifacts" aria-label="Generated candidate initiative file tree">docs/superplanner/&lt;initiative&gt;/
+|-- design.md              authoritative design
+|-- design.html            visual companion
+`-- features/
+    `-- F001-&lt;slug&gt;/
+        |-- FEATURE.md     value, scope, dependencies
+        |-- tasks/
+        |   `-- T001-&lt;slug&gt;.md
+        |-- acceptance/
+        |   `-- T001-&lt;slug&gt;.feature
+        `-- plans/
+            `-- T001-&lt;slug&gt;-plan.md</pre>
+      <div class="warning"><strong>Operational state stays outside candidate content:</strong> Git uses <code>&lt;git-common-dir&gt;/superplanner/&lt;initiative&gt;/STATE.md</code>; non-Git workspaces require an explicitly configured external path. This lets canonical handoff and reviewer results be recorded without changing candidate content and creating a review-SHA invalidation loop.</div>
+    </section>
+
+    <section id="quality">
+      <div class="section-head"><div class="label">05 / Release</div><h2>The approval follows the commit.</h2></div>
+      <div class="warning"><strong><code>COMMIT_PREPARE</code> is non-mutating:</strong> it may create external evidence but cannot stage, write a commit object, or update a ref. It presents the exact author and committer dates in <code>&lt;unix-seconds&gt; &lt;+|-HHMM&gt;</code> numeric-timezone form and the expected full repository-format OID, backed by persisted independently routed no-write <code>hash-object -t commit --stdin</code> operation/result evidence.</div>
+      <div class="panel gate">
+        <article class="gate-step"><strong>Authorized <code>COMMIT</code></strong><p>Require authorization that itself explicitly names the canonical patch hash, candidate tree, message hash, full base commit, target state, exact author and committer dates in numeric-timezone form, and expected full OID. Detached HEAD blocks authorization. Persist a distinct operation/result manifest for every authorized <code>add</code>, <code>write-tree</code>, <code>commit-tree</code>, and <code>update-ref</code> call. No ref mutation or <code>update-ref</code> may begin until the created full OID equals the authorized expected OID. The update binds <code>GIT_COMMITTER_DATE</code> and both branch and symbolic-worktree <code>HEAD</code> reflog appends byte-match the old/new OIDs, name/email, Unix seconds, numeric timezone, and reason.</p></article>
+        <div class="arrow" aria-hidden="true">&gt;</div>
+        <article class="gate-step"><strong>Standard review</strong><p>Fresh read-only context verifies the clean commit SHA equals the authorization's expected full OID. Python changes add the Python-specific skill.</p></article>
+        <div class="arrow" aria-hidden="true">&gt;</div>
+        <article class="gate-step"><strong>Kimi adversarial review</strong><p>Fresh review independently verifies the same SHA equals the authorization's expected full OID. Accepted risks need user evidence and exact SHA/scope, then fresh approval.</p></article>
+        <div class="arrow" aria-hidden="true">&gt;</div>
+        <article class="gate-step"><strong>User-executed push</strong><p>Superplanner never executes, brokers, retries, observes, or reports it. After both reviews, only a target-bound <code>push-presentation-request-v1</code> may authorize presentation of the config-isolated, hookless command. The supervisor resolves and rehashes registered verification, documentation, source, authorization, commit, review, request, and destination records; validates their cross-links; captures a clean-worktree snapshot; and creates canonical layout, execution-closure, exact-command, and eligibility records. The environment uses a private-only <code>PATH</code>, matching <code>safe.directory</code>, <code>http.followRedirects=false</code>, no candidate config, and an attested closed executable/helper/loader/library graph. Local-only <code>push-present</code> repeats final checks and sends stored bytes through a trusted output guard the model cannot edit. Separate-principal custody remains active until an atomic same-filesystem rename linearizes presented-path revocation; recovery then idempotently records one-use consumption and explicit cleanup state for the manifest-bound trusted-user-decision release record, which has no execution or outcome field. A dirty worktree or changed OID invalidates eligibility.</p></article>
+      </div>
+      <div class="warning"><strong>Change invalidation:</strong> any candidate edit after review returns through verification, docs sync, non-mutating <code>COMMIT_PREPARE</code>, authorization naming the canonical patch hash, candidate tree, message hash, full base commit, target state, exact numeric-timezone author and committer dates, and expected full OID, coordinator <code>COMMIT</code>, and fresh standard review. Risk acceptance never replaces reviewer approval.</div>
+    </section>
+
+    <footer>
+      <span>Superplanner design specification</span>
+      <span>Markdown source: SPEC.md</span>
+    </footer>
+  </main>
+</body>
+</html>
