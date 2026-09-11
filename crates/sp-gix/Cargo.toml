@@ -1,0 +1,6 @@
+[package]
+name = "sp-gix"
+description = "Trusted non-Git parsers for Git config tuples, refs, packed-refs, and commit bytes"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

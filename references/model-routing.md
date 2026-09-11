@@ -57,3 +57,15 @@ only through the credential-isolating inference broker in
 `handoff-contract.md`; their OpenCode processes never receive provider
 credentials or general provider-network access. The launcher attests the trusted
 provider implementation/version/hash and sole broker endpoint.
+
+## Provider Registration
+
+The canonical provider ids above (`zai`, `openai`, `openrouter`) are
+installation-defined ids, not stock OpenCode catalog ids. Stock OpenCode
+catalogs may spell a provider differently (for example `z-ai`) or omit one
+entirely; those spellings never substitute. The launcher's pinned private
+`OPENCODE_CONFIG` registers exactly the canonical ids as broker-backed
+custom providers, so agent frontmatter and these routes resolve through the
+broker without depending on the stock catalog. Model metadata for those
+custom providers is declared in the same pinned configuration because
+`OPENCODE_DISABLE_MODELS_FETCH=1` forbids catalog fetching.

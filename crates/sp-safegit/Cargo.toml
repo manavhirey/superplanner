@@ -1,0 +1,6 @@
+[package]
+name = "sp-safegit"
+description = "safe_git mediator service: mode grammars, routing, operation tokens"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

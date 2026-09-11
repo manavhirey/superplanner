@@ -1,0 +1,168 @@
+# Record Grammar
+
+Normative definitions for every machine-validated record exchanged between
+trusted components, candidate artifacts, and external state. Where a contract
+leaves a field, size, encoding, or identifier unspecified, this file decides it.
+Validators in the runtime enforce exactly these rules; unknown forms fail
+closed. This file does not weaken any existing contract.
+
+## Version Tags
+
+Every typed record is identified by an ASCII schema tag ending in
+`-v<positive-integer>` (for example `push-command-v1`, `handoff-v1`). Tags are
+case-sensitive. There is no version negotiation: a consumer validates exactly
+the tags it implements and rejects every unknown tag as a blocker. Records
+never carry a second in-band version field; the tag is the only version
+discriminator.
+
+## Hash-Field Forms
+
+Exactly two forms exist, and each schema fixes which form every field uses:
+
+- `content-id form`: `sha256:<64 lowercase hex>`, matching
+  `^sha256:[0-9a-f]{64}$`. Used by fields named `*_content_id` and by
+  artifact, bounded-brief, message, and patch content identities.
+- `digest form`: bare `<64 lowercase hex>`, matching `^[0-9a-f]{64}$`. Used by
+  fields named `*_sha256`, `*_hash`, and by evidence, manifest, and record
+  digests.
+
+A field carrying the wrong form for its name is invalid. The two marker-hash
+algorithms remain distinct and are never conflated:
+
+- `approval_content_id` hashes the exact file bytes **outside** the single
+  approval marker pair (`artifact-contracts.md`).
+- `bounded_brief_content_id` hashes the exact bytes **inside** the
+  bounded-brief marker pair (`resumable-state.md`).
+
+Repository commit, tree, and blob OIDs are never called hashes: they follow the
+repository's detected SHA-1 or SHA-256 object format.
+
+## Object-Identifier Width
+
+Every record that carries a commit OID (`git_sha`, `reviewed_sha`,
+`base_sha`, expected commit OID, ref values) is bound to the repository object
+format declared by its phase context or manifest. Validators accept 40 lowercase
+hex (SHA-1) or 64 lowercase hex (SHA-256) accordingly, and reject mixed widths
+within one record.
+
+## Identifiers
+
+- `agent_id`: an installed OpenCode agent handle, matching
+  `^[a-z0-9][a-z0-9-]{0,63}$`.
+- `operation_id`, `record_id`, `dispatch_id`, `review_id`, `finding_id`:
+  `sp-<kind>-<32 lowercase hex>` where `<kind>` is one of
+  `operation|record|dispatch|review|finding` and the hex comes from a
+  process-wide CSPRNG. Globbing, prediction, or reuse outside the creating
+  component is invalid.
+- `task_id`: the stable workflow identifier `F<nnn>/T<nnn>` or
+  `T<nnn>-<slug>` as recorded in the initiative's task index; it is never an
+  OpenCode session ID and never substitutes for one.
+- `opencode_session_id`: the session identifier returned by the supervisor
+  result, matching `^ses_[A-Za-z0-9_-]+$` when present.
+
+## Times
+
+- Human timestamps (`completion_time`, `approved_at`, monitoring events) use
+  UTC ISO-8601 at second precision with a literal `Z`:
+  `YYYY-MM-DDTHH:MM:SSZ`, matching
+  `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`. Fractional
+  seconds and numeric offsets are invalid.
+- Git author and committer dates keep Git's own form
+  `<unix-seconds> <+|-HHMM>` exactly as the quality gates require.
+
+## Size Limits
+
+Hard maxima; exceeding any limit is a validation blocker, never a truncation:
+
+| Payload | Maximum |
+| --- | --- |
+| Canonical handoff record (worker or reviewer) | 256 KiB |
+| Specialist brief | 4 MiB |
+| `operate` request or result | 1 MiB |
+| Any single operation output leaf | 64 MiB |
+| Any registered immutable record | 8 MiB |
+| Approval-controlled candidate artifact | 4 MiB |
+| External `STATE.md` | 8 MiB |
+
+## Findings And Severity
+
+Every reviewer finding is a fixed-field record:
+
+```text
+{ finding_id, severity, file, line, criterion, evidence }
+```
+
+- `severity` is exactly one of `blocker`, `major`, `minor`, `info`.
+- `file` is a worktree-relative POSIX path; `line` is a positive integer or
+  `none`.
+- `criterion` names the contract, acceptance rule, or plan section the finding
+  violates.
+- `evidence` cites the exact bytes, command output, or record that proves the
+  finding. An unsupported finding is invalid.
+
+## Enum Consistency
+
+`status`, `review_result`, invocation states, monitoring event types, and lease
+states are each defined by exactly one enum and are shared across contracts:
+
+- Handoff `status` is only `complete` or `blocked`. A harness timeout is
+  normalized into `blocked` with timeout evidence; `timeout` is never a
+  handoff status.
+- Review `review_result` is only `approved`, `findings`, or `not-completed`.
+- Invocation states: `not-started`, `running`, `ended`, `timed-out`,
+  `cancellation-confirmed`.
+- Monitoring events: `dispatch`, `checkpoint`, `handoff`, `timeout`, `resume`,
+  `live-check`, `cancel-requested`, `cancellation-confirmed`,
+  `invocation-ended`, `replacement`, `escalated`.
+- Custody lease states: `active`, `retiring`, `cleanup-failed`, `retired`, with
+  the `prepared` one-use marker preceding `active` presentation.
+
+## Canonical JSON
+
+Records serialized as JSON use one canonical form: UTF-8, no insignificant
+whitespace, object keys sorted by UTF-8 byte order, integers only where a
+number appears, and no duplicate keys. The digest of any JSON record is taken
+over exactly these canonical bytes. This defines the `operate` result's request
+hash: it is the digest of the canonical serialization of the validated
+request, which is deterministic, so "exact" and "normalized" coincide.
+
+## Unknown-Field Rejection
+
+JSON records reject unknown, duplicate, or null-valued fields. Binary records
+reject extra fields, noncanonical ordering, duplicate collection items, and
+trailing bytes. Markdown and Gherkin artifacts reject content outside the
+grammar their contract defines.
+
+## Registry Identity
+
+Every registered record is addressed by:
+
+```text
+{ path, device, inode, link_count, sha256 }
+```
+
+`path` is the canonical absolute path; `device` and `inode` are the filesystem
+identities; `link_count` must be exactly `1` for published no-clobber leaves.
+Consumers re-open without following links, recompute `sha256`, and compare every
+identity field before use.
+
+## Trusted User-Decision Recorder
+
+User decisions (approvals, commit authorization, push presentation requests,
+custody releases) are captured only through the launcher's user-facing channel,
+which no model mediates or renders. At setup the launcher generates an
+install-scoped Ed25519 keypair; the private key never leaves the launcher
+process and the public key is recorded in the registry. Every user-decision
+record carries the launcher's signature over its canonical bytes, and every
+consumer verifies that signature before relying on the record. A decision
+record without a valid signature is invalid.
+
+## External STATE.md
+
+`STATE.md` remains the single human-readable operational ledger defined by
+`resumable-state.md`; there is no second authoritative machine mirror. To make
+that reliable, its sections and tables follow the strict grammar defined by the
+`sp-state` validators: exact section order, exact table columns in the order
+given by the template, one row per record, and the `none` sentinel for empty
+sets. Approval mirrors in `STATE.md` must byte-match their candidate artifacts'
+approval fields before any gate advances.

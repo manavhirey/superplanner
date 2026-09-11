@@ -1,0 +1,6 @@
+[package]
+name = "sp-evidence"
+description = "Immutable evidence registry with no-clobber publication"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

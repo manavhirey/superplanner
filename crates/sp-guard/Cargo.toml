@@ -1,0 +1,6 @@
+[package]
+name = "sp-guard"
+description = "Trusted output guard for push-command presentation"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
