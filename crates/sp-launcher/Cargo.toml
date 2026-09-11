@@ -1,0 +1,6 @@
+[package]
+name = "sp-launcher"
+description = "Trusted coordinator launcher CLI"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

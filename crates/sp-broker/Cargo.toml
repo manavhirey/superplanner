@@ -1,0 +1,6 @@
+[package]
+name = "sp-broker"
+description = "Credential-isolating inference broker"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

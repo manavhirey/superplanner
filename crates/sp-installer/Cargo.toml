@@ -1,0 +1,6 @@
+[package]
+name = "sp-installer"
+description = "Installer and environment readiness probes"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
