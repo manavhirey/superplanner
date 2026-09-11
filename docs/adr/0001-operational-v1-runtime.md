@@ -94,18 +94,22 @@ Pinned stable Rust toolchain via `rust-toolchain.toml`; committed
 introduces it; reproducible builds verified twice from clean checkouts; CI
 runs fmt + clippy (-D warnings) + tests + release build on Linux and macOS.
 
-## Open Verification Items (Phase 1 probes)
+## Open Verification Items (probed 2026-09-11; see docs/probes/0001-opencode-1.18.23.md)
 
-1. Mechanical session-agent identity source from an `opencode run` invocation
-   (JSON event schema carries `sessionID` but no observed agent field).
-2. Trusted-plugin registration carrying `superplanner_supervisor` under
-   `OPENCODE_PURE=1` + `OPENCODE_DISABLE_DEFAULT_PLUGINS=1` with project and
-   global tools disabled.
-3. Allowlisted skill visibility to workers under
-   `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` via the pinned private config.
+1. ~~Mechanical session-agent identity source~~ — **Resolved:** the
+   `--print-logs` stream carries `agent=<name> mode=<mode>` per request and
+   `created id=ses_...` for the session; JSON events carry `sessionID` only,
+   so the supervisor cross-checks both streams.
+2. ~~Trusted-plugin tool injection under disable flags~~ — **Resolved:**
+   `OPENCODE_PURE=1` blocks all plugins, so the envelope drops PURE; with the
+   four granular flags the attested private plugin loads while a project
+   `.opencode/plugins/` injection is blocked. Contracts amended accordingly.
+3. Skill visibility under `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` —
+   config-path resolution verified; skill execution under the envelope is
+   covered by the #6/#7 broker integration tests.
 
-If any probe fails, the fallback is an upstream OpenCode feature request plus
-an explicit contract amendment; no silent weakening.
+Residual model-level checks (need a working provider): plugin-tool exposure
+to an agent, skill execution, `--session` resume identity stability.
 
 ## Consequences
 

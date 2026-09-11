@@ -225,11 +225,13 @@ blocks retained edits. Each candidate-file specialist uses the required
 isolation supervisor and credential-isolating inference broker in
 `references/handoff-contract.md`: private `HOME` plus XDG/temp roots, pinned private
 `OPENCODE_CONFIG`/`OPENCODE_DB`, required project-config and external-skill
-disable flags, pure mode, default-plugin and model-catalog-fetch disablement,
+disable flags, default-plugin and model-catalog-fetch disablement plus exactly
+one attested private supervisor plugin (pure mode is not set because it blocks
+the required trusted primitive),
 scrubbed OpenCode overrides, resolved-path attestation, a source-bound runtime
 wrapper and permissions/session-agent identity stable across resume,
 credential/Git-metadata masking, no persisted approvals, custom providers or
-provider overrides, MCP, plugins, LSP, formatters, or automatic process hooks;
+provider overrides, MCP, LSP, formatters, or automatic process hooks;
 authenticated allowlisted skills;
 stock built-in tool provenance; and a process sandbox active before startup and
 the first tool call. The launched process must use a distinct OS security
