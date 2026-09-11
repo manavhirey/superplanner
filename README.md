@@ -102,7 +102,9 @@ own subagents or edit external `STATE.md`.
   `skills.paths`, named `references`, agent `variant`, and pattern permissions.
 - An isolation supervisor implementing the exact spawn, private-`HOME`/XDG/temp
   root and `OPENCODE_CONFIG`/`OPENCODE_DB` binding, required project-config and
-  external-skill disable flags, pure mode and default-plugin disablement,
+  external-skill disable flags, default-plugin disablement with exactly one
+  attested private supervisor plugin (pure mode is not used because it blocks
+  the required trusted primitive),
   model-catalog fetch disablement, re-root, credential masking, sandbox,
   inference-broker, runtime-wrapper, result, and session-resume interface in
   `references/handoff-contract.md`. Stock OpenCode `Task` alone cannot execute a

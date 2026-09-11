@@ -96,9 +96,10 @@ in candidate or review diffs, dirty a worktree, or change the candidate SHA.
 - Per-invocation private `HOME` plus config/data/cache/state/temp roots; exact XDG,
   `TMPDIR`, pinned `OPENCODE_CONFIG`/`OPENCODE_DB`, required
   `OPENCODE_DISABLE_PROJECT_CONFIG=1` and
-  `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_PURE=1`, and
+  `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`,
   `OPENCODE_DISABLE_DEFAULT_PLUGINS=1` and
-  `OPENCODE_DISABLE_MODELS_FETCH=1`, scrubbed override evidence; resolved OpenCode
+  `OPENCODE_DISABLE_MODELS_FETCH=1`, absence of `OPENCODE_PURE` with the
+  attested private supervisor-plugin identity/hash, scrubbed override evidence; resolved OpenCode
   paths/database; and canonical credential file identities plus complete
   symlink/hard-link alias and Git-metadata mask manifest.
 - Per-invocation distinct-OS-principal evidence or a kernel-enforced

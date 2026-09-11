@@ -78,11 +78,17 @@ new process with a private `HOME`, private config/data/cache/state/temp roots, t
 role-specific registry, and the sandbox below. Before exec it sets
 `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`, and
 `TMPDIR` to those five roots; pins `OPENCODE_CONFIG` and `OPENCODE_DB` to attested
-paths beneath them; sets `OPENCODE_DISABLE_PROJECT_CONFIG=1` and
-`OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_PURE=1`, and
-`OPENCODE_DISABLE_DEFAULT_PLUGINS=1`; sets
-`OPENCODE_DISABLE_MODELS_FETCH=1` so the inference broker remains the sole
-provider-related endpoint; and leaves every other `OPENCODE_*` override unset.
+paths beneath them; sets `OPENCODE_DISABLE_PROJECT_CONFIG=1`,
+`OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_DISABLE_DEFAULT_PLUGINS=1`,
+and `OPENCODE_DISABLE_MODELS_FETCH=1` so the inference broker remains the
+sole provider-related endpoint; and leaves every other `OPENCODE_*` override
+unset. It must not set `OPENCODE_PURE=1`: pure mode blocks every plugin.
+Project and global plugin sources are excluded by
+`OPENCODE_DISABLE_PROJECT_CONFIG=1` and the private roots; the only plugin
+that may exist in the private config is the launcher's one
+path-and-SHA-256-attested plugin, which provides the `superplanner_supervisor`
+primitive to coordinators. Workers and reviewers receive no plugin, and
+their permission manifests deny every tool except their explicit allowlists.
 It attests those variables and OpenCode's resolved config, data, cache, state,
 temp, config-file, and database paths, not only the requested environment.
 Because OpenCode CLI does not reject `mode: subagent` for `--agent` — it
