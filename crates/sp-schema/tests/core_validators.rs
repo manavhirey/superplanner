@@ -1,7 +1,8 @@
 use sp_schema::core::{
     validate_agent_id, validate_content_id_form, validate_digest_form, validate_git_date,
-    validate_iso8601_z, validate_session_id, validate_sp_id, validate_task_id, HandoffStatus,
-    InvocationState, LeaseState, MonitoringEventType, ReviewResult, Severity, SizeLimit,
+    validate_iso8601_z, validate_lease_id, validate_session_id, validate_sp_id, validate_task_id,
+    HandoffStatus, InvocationState, LeaseState, MonitoringEventType, ReviewResult, Severity,
+    SizeLimit,
 };
 
 #[test]
@@ -32,6 +33,13 @@ fn digest_forms() {
     )
     .is_err());
     assert!(validate_digest_form("0123").is_err());
+}
+
+#[test]
+fn lease_id_form() {
+    assert!(validate_lease_id("sp-lease-0123456789abcdef0123456789abcdef").is_ok());
+    assert!(validate_lease_id("sp-record-0123456789abcdef0123456789abcdef").is_err());
+    assert!(validate_lease_id("sp-lease-short").is_err());
 }
 
 #[test]

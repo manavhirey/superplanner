@@ -115,9 +115,15 @@ fn trim_line_ending(line: &[u8]) -> &[u8] {
 }
 
 pub fn sha256_prefixed(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
     let mut out = String::with_capacity(SHA256_LEN);
     out.push_str("sha256:");
+    out.push_str(&sha256_digest(bytes));
+    out
+}
+
+pub fn sha256_digest(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut out = String::with_capacity(64);
     for b in digest {
         out.push_str(&format!("{b:02x}"));
     }

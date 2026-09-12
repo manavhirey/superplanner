@@ -7,10 +7,11 @@
 //! are rejected structurally by typed deserialization
 //! (`deny_unknown_fields`), and `null` is rejected here.
 
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
-use crate::hashing::sha256_prefixed;
+use crate::core::SizeLimit;
+use crate::hashing::sha256_digest;
 
 pub fn canonical_json(value: &Value) -> Result<String, String> {
     validate_tree(value)?;
@@ -18,12 +19,31 @@ pub fn canonical_json(value: &Value) -> Result<String, String> {
 }
 
 pub fn canonical_digest(value: &Value) -> Result<String, String> {
-    canonical_json(value).map(|text| sha256_prefixed(text.as_bytes()))
+    canonical_json(value).map(|text| sha256_digest(text.as_bytes()))
 }
 
 pub fn canonical_digest_of<T: Serialize>(value: &T) -> Result<String, String> {
     let value = serde_json::to_value(value).map_err(|e| format!("serialization failed: {e}"))?;
     canonical_digest(&value)
+}
+
+pub fn canonical_json_of<T: Serialize>(value: &T) -> Result<String, String> {
+    let value = serde_json::to_value(value).map_err(|e| format!("serialization failed: {e}"))?;
+    canonical_json(&value)
+}
+
+pub fn parse_canonical_json<T>(bytes: &[u8], limit: SizeLimit) -> Result<T, String>
+where
+    T: DeserializeOwned + Serialize,
+{
+    limit.check(bytes.len())?;
+    let record: T =
+        serde_json::from_slice(bytes).map_err(|e| format!("JSON parsing failed: {e}"))?;
+    let canonical = canonical_json_of(&record)?;
+    if canonical.as_bytes() != bytes {
+        return Err("JSON input is not in canonical byte form".to_string());
+    }
+    Ok(record)
 }
 
 fn validate_tree(value: &Value) -> Result<(), String> {

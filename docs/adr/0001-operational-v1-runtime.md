@@ -94,6 +94,13 @@ Pinned stable Rust toolchain via `rust-toolchain.toml`; committed
 introduces it; reproducible builds verified twice from clean checkouts; CI
 runs fmt + clippy (-D warnings) + tests + release build on Linux and macOS.
 
+The schema crate uses `serde`/`serde_json` for strict typed JSON and canonical
+serialization, RustCrypto `sha1`/`sha2` for Git object IDs and SHA-256 record
+identities, and the small `unicode-casefold`/`unicode-normalization` crates to
+reject ownership-path aliases under full Unicode case folding and canonical
+normalization. These replace incomplete handwritten implementations at security
+boundaries.
+
 ## Open Verification Items (probed 2026-09-11; see docs/probes/0001-opencode-1.18.23.md)
 
 1. ~~Mechanical session-agent identity source~~ — **Resolved:** the

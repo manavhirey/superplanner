@@ -207,6 +207,10 @@ fn canonical_digest_is_order_independent() {
     let a = json!({"agent_id": "sp.wrap", "variant": "high"});
     let b = json!({"variant": "high", "agent_id": "sp.wrap"});
     assert_eq!(canonical_digest(&a).unwrap(), canonical_digest(&b).unwrap());
+    assert_eq!(
+        canonical_digest(&a).unwrap(),
+        "41adfa22306ea5df5764a3b437e06eddd1f6b67801c0f60967ab8d613fb2c4a9"
+    );
 }
 
 #[test]
