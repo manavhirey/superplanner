@@ -66,6 +66,10 @@ fn sp_id_grammar() {
 #[test]
 fn agent_and_session_and_task_ids() {
     assert!(validate_agent_id("sp-probe-wrapper").is_ok());
+    assert!(validate_agent_id("superplanner.builder").is_ok());
+    assert!(validate_agent_id("superplanner..builder").is_err());
+    assert!(validate_agent_id("superplanner.").is_err());
+    assert!(validate_agent_id(".superplanner").is_err());
     assert!(validate_agent_id("Build").is_err());
     assert!(validate_agent_id("").is_err());
     assert!(validate_session_id("ses_f6da62264ffedNODzLYU6IRTmN").is_ok());

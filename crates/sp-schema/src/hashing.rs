@@ -114,7 +114,7 @@ fn trim_line_ending(line: &[u8]) -> &[u8] {
     }
 }
 
-fn sha256_prefixed(bytes: &[u8]) -> String {
+pub fn sha256_prefixed(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
     let mut out = String::with_capacity(SHA256_LEN);
     out.push_str("sha256:");
@@ -124,7 +124,7 @@ fn sha256_prefixed(bytes: &[u8]) -> String {
     out
 }
 
-const SHA256_LEN: usize = 71;
+pub(crate) const SHA256_LEN: usize = 71;
 
 pub fn approval_content_id(bytes: &[u8], kind: MarkerKind) -> Result<String, String> {
     if !matches!(

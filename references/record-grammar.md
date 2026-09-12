@@ -48,7 +48,10 @@ within one record.
 ## Identifiers
 
 - `agent_id`: an installed OpenCode agent handle, matching
-  `^[a-z0-9][a-z0-9-]{0,63}$`.
+  `^[a-z0-9]([a-z0-9-]|\.(?=[a-z0-9])){0,63}$` — lowercase alphanumeric
+  segments separated by single dots or hyphens (for example
+  `superplanner.builder`, `superplanner.quick`). No leading or trailing
+  dot, no consecutive dots, at most 64 bytes.
 - `operation_id`, `record_id`, `dispatch_id`, `review_id`, `finding_id`:
   `sp-<kind>-<32 lowercase hex>` where `<kind>` is one of
   `operation|record|dispatch|review|finding` and the hex comes from a
