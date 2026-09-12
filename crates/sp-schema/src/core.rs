@@ -74,6 +74,27 @@ pub fn validate_digest_form(value: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// A full non-`none` commit OID of the width bound to the repository object
+/// format (`sha1` = 40 hex, `sha256` = 64 hex), per
+/// `references/record-grammar.md` "Object-Identifier Width".
+pub fn validate_git_sha_width(
+    value: &str,
+    format: crate::git_mediation::ObjectFormat,
+    where_: &str,
+) -> Result<(), String> {
+    let width = format.oid_width();
+    let bytes = value.as_bytes();
+    if bytes.len() != width
+        || !bytes.iter().all(|b| matches!(b, b'a'..=b'f' | b'0'..=b'9'))
+        || bytes.iter().all(|b| *b == b'0')
+    {
+        return Err(format!(
+            "{where_} must be a full {width}-hex commit OID for {format:?}, got {value:?}"
+        ));
+    }
+    Ok(())
+}
+
 pub fn validate_iso8601_z(value: &str) -> Result<(), String> {
     let bytes = value.as_bytes();
     let invalid = || format!("time must match YYYY-MM-DDTHH:MM:SSZ: {value:?}");
@@ -120,6 +141,9 @@ pub fn validate_git_date(value: &str) -> Result<(), String> {
         return Err(invalid());
     };
     if seconds.is_empty() || !seconds.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(invalid());
+    }
+    if seconds.len() > 1 && seconds.starts_with('0') {
         return Err(invalid());
     }
     if zone.len() != 5 {
@@ -173,6 +197,18 @@ pub fn validate_sp_id(kind: &str, value: &str) -> Result<(), String> {
         .ok_or_else(|| format!("id must start with {prefix:?}: {value:?}"))?;
     if !is_lowercase_hex_of_len(rest.as_bytes(), 32) {
         return Err(format!("id must end with 32 lowercase hex: {value:?}"));
+    }
+    Ok(())
+}
+
+pub fn validate_lease_id(value: &str) -> Result<(), String> {
+    let rest = value
+        .strip_prefix("sp-lease-")
+        .ok_or_else(|| format!("lease ID must start with sp-lease-: {value:?}"))?;
+    if !is_lowercase_hex_of_len(rest.as_bytes(), 32) {
+        return Err(format!(
+            "lease ID must end with 32 lowercase hex: {value:?}"
+        ));
     }
     Ok(())
 }

@@ -460,8 +460,8 @@ operation, create a new push-only Git directory outside the candidate and every
 repository Git directory. The typed request accepts registered immutable record
 IDs, not caller-asserted hashes, for the source context, object route,
 authorization manifest, coordinator `COMMIT` result, both review results,
-current verification result, documentation-synchronization result, explicit user
-presentation request, and trusted destination-config snapshot.
+explicit user presentation request, current verification result,
+documentation-synchronization result, and trusted destination-config snapshot.
 For each ID, the supervisor resolves the registry's canonical path, expected
 identity, and expected hash; opens the path without following links; revalidates
 its ancestry and immutability; and recomputes its hash. It then validates that
