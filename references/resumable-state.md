@@ -89,8 +89,11 @@ in candidate or review diffs, dirty a worktree, or change the candidate SHA.
   status-`125` recovery result instead. For every unconsumed token, record that
   every reserved output, result, and staging leaf remains absent and unaliased.
 - Dispatch IDs, stable workflow task IDs, generated OpenCode session IDs stored
-  as `opencode_session_id`, source agent ID/hash, runtime wrapper name/hash,
-  allowed name/mode delta, observed session-agent evidence, model/variant,
+  as `opencode_session_id`, source-template and installed-agent IDs/hashes,
+  model-catalog/profile/installation IDs, identities, and hashes, canonical
+  `agent-installation-delta-v1` SHA-256 and byte-validation evidence, runtime
+  wrapper name/hash, allowed runtime name/mode delta,
+  observed session-agent evidence, selected model/variant,
   resolved-permission-manifest hash, immutable brief path/hash, exact agent mode,
   scopes, step/execution budgets, milestones, stop conditions, and checkpoint paths.
 - Per-invocation private `HOME` plus config/data/cache/state/temp roots; exact XDG,
@@ -362,8 +365,14 @@ Before acting on resumed state, the orchestrator verifies:
     path/identity/hash binding to remain exact.
 8. No running or not-confirmed-cancelled invocation overlaps a proposed
     ownership domain, and every resumed candidate writer/reviewer still has the
-    exact persisted brief, source agent, runtime wrapper, model/variant,
-    permissions, observed session agent, private-root/path, credential mask,
+    exact original spawn request, persisted brief, source-template and
+    installed-agent IDs/hashes, model-catalog/profile/installation IDs,
+    identities, and hashes, canonical `agent-installation-delta-v1` SHA-256 and
+    byte-validation evidence, runtime wrapper name/hash, allowed runtime
+    name/mode delta, selected model/variant,
+    registered spawn-response hash and matching returned session ID, permissions,
+    observed session agent, fresh broker-readiness evidence bound to the three
+    records and selected agent/model/variant, private-root/path, credential mask,
     broker, registry, distinct-principal or passing kernel-enforced
     same-principal isolation verdict, and sandbox envelope.
 9. Checkpoint files and handoffs use the canonical schema and agree with task

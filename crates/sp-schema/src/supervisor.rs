@@ -6,9 +6,18 @@
 //! issues (#9-#13); this module owns the envelope and the lifecycle
 //! records, validated as canonical JSON with unknown-field rejection.
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Mutex;
+
 use serde::{Deserialize, Serialize};
 
 use crate::core::{validate_agent_id, validate_session_id};
+use crate::model_routing::{provider_for_model, validate_route_shape, ValidatedModelPolicy};
+
+pub const RESUME_ENVELOPE_RESERVED_BYTES: usize = 1024;
+pub const SPAWN_REQUEST_MAX_BYTES: usize =
+    crate::core::REGISTERED_RECORD_MAX_BYTES - RESUME_ENVELOPE_RESERVED_BYTES;
+pub const MODEL_ROUTE_READINESS_TAG: &str = "model-route-readiness-v1";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -28,15 +37,7 @@ pub struct SkillEntry {
     pub sha256: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ProviderManifest {
-    pub provider: String,
-    pub package: String,
-    pub version: String,
-    pub sha256: String,
-    pub broker_endpoint: String,
-}
+pub use crate::model_routing::ProviderManifest;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -51,6 +52,9 @@ pub struct SpawnRequest {
     pub agent_id: String,
     pub model: String,
     pub variant: String,
+    pub model_catalog_sha256: String,
+    pub model_profile_sha256: String,
+    pub model_installation_sha256: String,
     pub worktree: String,
     pub private_home: String,
     pub private_roots: PrivateRoots,
@@ -59,6 +63,7 @@ pub struct SpawnRequest {
     pub brief: String,
     pub brief_sha256: String,
     pub source_agent_id: String,
+    pub source_template_sha256: String,
     pub source_agent_sha256: String,
     pub runtime_wrapper: String,
     pub runtime_wrapper_sha256: String,
@@ -75,7 +80,49 @@ pub struct SpawnRequest {
 pub struct ResumeRequest {
     pub spawn: SpawnRequest,
     pub opencode_session_id: String,
+    pub spawn_response_sha256: String,
     pub resume_evidence_sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModelRouteReadiness {
+    pub schema: String,
+    pub model_catalog_sha256: String,
+    pub model_profile_sha256: String,
+    pub model_installation_sha256: String,
+    pub agent_id: String,
+    pub model: String,
+    pub variant: String,
+    pub provider_manifest_sha256: String,
+    pub checked_at: String,
+    pub challenge_sha256: String,
+    pub probe_sha256: String,
+    pub status: ModelRouteReadinessStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelRouteReadinessStatus {
+    Pass,
+    Blocked,
+}
+
+#[derive(Debug)]
+struct RegisteredModelRouteReadiness {
+    evidence: ModelRouteReadiness,
+}
+
+#[derive(Debug, Default)]
+struct RouteReadinessRegistryState {
+    pending_challenges: BTreeMap<String, String>,
+    used_challenges: BTreeSet<String>,
+    records: BTreeMap<String, RegisteredModelRouteReadiness>,
+}
+
+#[derive(Debug, Default)]
+pub struct RouteReadinessRegistry {
+    state: Mutex<RouteReadinessRegistryState>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,26 +192,6 @@ pub struct OperateResult {
     pub state_transition: String,
 }
 
-pub const ROUTE_TABLE: [(&str, [&str; 3]); 3] = [
-    ("openai/gpt-5.6-sol", ["xhigh", "high", "medium"]),
-    ("zai/glm-5.3", ["max", "", ""]),
-    ("openrouter/moonshotai/kimi-k3", ["max", "", ""]),
-];
-
-pub fn validate_route(model: &str, variant: &str) -> Result<(), String> {
-    for (candidate, variants) in ROUTE_TABLE {
-        if candidate == model {
-            if variants.contains(&variant) {
-                return Ok(());
-            }
-            return Err(format!(
-                "variant {variant:?} is not valid for {model:?}; allowed: {variants:?}"
-            ));
-        }
-    }
-    Err(format!("model {model:?} is not a canonical route"))
-}
-
 fn validate_absolute(value: &str, where_: &str) -> Result<(), String> {
     if !value.starts_with('/') {
         return Err(format!("{where_} must be an absolute path: {value:?}"));
@@ -173,9 +200,62 @@ fn validate_absolute(value: &str, where_: &str) -> Result<(), String> {
 }
 
 impl SpawnRequest {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self, policy: &ValidatedModelPolicy) -> Result<(), String> {
+        self.validate_common()?;
+        if self.model_catalog_sha256 != policy.catalog_sha256() {
+            return Err("spawn request does not bind the selected model catalog".to_string());
+        }
+        if self.model_profile_sha256 != policy.profile_sha256() {
+            return Err("spawn request does not bind the selected model profile".to_string());
+        }
+        if self.model_installation_sha256 != policy.installation_sha256() {
+            return Err("spawn request does not bind the installed model registry".to_string());
+        }
+        let selection = policy
+            .profile()
+            .selection_for(&self.agent_id)
+            .ok_or_else(|| format!("model profile has no route for {:?}", self.agent_id))?;
+        if self.model != selection.model || self.variant != selection.variant {
+            return Err(format!(
+                "spawn route {:?} variant {:?} does not match selected route {:?} variant {:?}",
+                self.model, self.variant, selection.model, selection.variant
+            ));
+        }
+        if self.source_agent_id != self.agent_id {
+            return Err("source_agent_id must equal the selected agent_id".to_string());
+        }
+        let installed_agent = policy
+            .installation()
+            .installed_agent_for(&self.agent_id)
+            .ok_or_else(|| format!("installed registry has no agent {:?}", self.agent_id))?;
+        if self.source_template_sha256 != installed_agent.source_template_sha256
+            || self.source_agent_sha256 != installed_agent.installed_agent_sha256
+        {
+            return Err("spawn request does not bind the installed agent files".to_string());
+        }
+        let provider_id = provider_for_model(&self.model)?;
+        let expected_provider = policy
+            .installation()
+            .provider_for(provider_id)
+            .ok_or_else(|| format!("installed registry has no provider {provider_id:?}"))?;
+        if &self.provider != expected_provider {
+            return Err("spawn provider manifest does not match installed provider".to_string());
+        }
+        Ok(())
+    }
+
+    fn validate_common(&self) -> Result<(), String> {
+        let encoded = crate::json::canonical_json_of(self)?;
+        if encoded.len() > SPAWN_REQUEST_MAX_BYTES {
+            return Err(format!(
+                "spawn request exceeds resumable limit of {SPAWN_REQUEST_MAX_BYTES} bytes"
+            ));
+        }
         validate_agent_id(&self.agent_id)?;
-        validate_route(&self.model, &self.variant)?;
+        validate_route_shape(&self.model, &self.variant)?;
+        crate::core::validate_digest_form(&self.model_catalog_sha256)?;
+        crate::core::validate_digest_form(&self.model_profile_sha256)?;
+        crate::core::validate_digest_form(&self.model_installation_sha256)?;
         validate_absolute(&self.worktree, "worktree")?;
         validate_absolute(&self.private_home, "private_home")?;
         let roots = [
@@ -192,6 +272,7 @@ impl SpawnRequest {
         crate::core::validate_digest_form(&self.opencode_sha256)?;
         crate::core::validate_digest_form(&self.brief_sha256)?;
         validate_agent_id(&self.source_agent_id)?;
+        crate::core::validate_digest_form(&self.source_template_sha256)?;
         crate::core::validate_digest_form(&self.source_agent_sha256)?;
         validate_agent_id(&self.runtime_wrapper)?;
         crate::core::validate_digest_form(&self.runtime_wrapper_sha256)?;
@@ -205,10 +286,7 @@ impl SpawnRequest {
             validate_absolute(&skill.path, "skill.path")?;
             crate::core::validate_digest_form(&skill.sha256)?;
         }
-        crate::core::validate_digest_form(&self.provider.sha256)?;
-        if self.provider.broker_endpoint.is_empty() {
-            return Err("broker_endpoint must not be empty".to_string());
-        }
+        self.provider.validate()?;
         for path in &self.credential_manifest {
             validate_absolute(path, "credential_manifest entry")?;
         }
@@ -232,18 +310,172 @@ impl SpawnRequest {
 }
 
 impl ResumeRequest {
-    pub fn validate(&self) -> Result<(), String> {
-        self.spawn.validate()?;
+    pub fn validate(
+        &self,
+        original_spawn: &SpawnRequest,
+        original_response: &SpawnResponse,
+        policy: &ValidatedModelPolicy,
+    ) -> Result<(), String> {
+        if &self.spawn != original_spawn {
+            return Err("resume request must contain the exact original spawn request".to_string());
+        }
+        self.spawn.validate(policy)?;
+        original_response.validate(original_spawn)?;
         validate_session_id(&self.opencode_session_id)?;
+        if self.opencode_session_id != original_response.opencode_session_id {
+            return Err(
+                "resume session ID does not match the registered spawn response".to_string(),
+            );
+        }
+        crate::core::validate_digest_form(&self.spawn_response_sha256)?;
+        if self.spawn_response_sha256 != original_response.canonical_sha256(original_spawn)? {
+            return Err("resume request does not bind the registered spawn response".to_string());
+        }
         crate::core::validate_digest_form(&self.resume_evidence_sha256)?;
         Ok(())
     }
 }
 
+impl ModelRouteReadiness {
+    pub fn validate(
+        &self,
+        spawn: &SpawnRequest,
+        policy: &ValidatedModelPolicy,
+    ) -> Result<(), String> {
+        spawn.validate(policy)?;
+        if self.schema != MODEL_ROUTE_READINESS_TAG {
+            return Err(format!("unknown route readiness schema: {:?}", self.schema));
+        }
+        for digest in [
+            &self.model_catalog_sha256,
+            &self.model_profile_sha256,
+            &self.model_installation_sha256,
+            &self.provider_manifest_sha256,
+            &self.challenge_sha256,
+            &self.probe_sha256,
+        ] {
+            crate::core::validate_digest_form(digest)?;
+        }
+        validate_agent_id(&self.agent_id)?;
+        crate::model_routing::validate_route_shape(&self.model, &self.variant)?;
+        crate::core::validate_iso8601_z(&self.checked_at)?;
+        if self.model_catalog_sha256 != spawn.model_catalog_sha256
+            || self.model_profile_sha256 != spawn.model_profile_sha256
+            || self.model_installation_sha256 != spawn.model_installation_sha256
+            || self.agent_id != spawn.agent_id
+            || self.model != spawn.model
+            || self.variant != spawn.variant
+        {
+            return Err(
+                "route readiness does not bind the original spawn policy and route".to_string(),
+            );
+        }
+        let provider_json = crate::json::canonical_json_of(&spawn.provider)?;
+        if self.provider_manifest_sha256 != crate::hashing::sha256_digest(provider_json.as_bytes())
+        {
+            return Err("route readiness does not bind the spawn provider manifest".to_string());
+        }
+        Ok(())
+    }
+
+    pub fn canonical_sha256(
+        &self,
+        spawn: &SpawnRequest,
+        policy: &ValidatedModelPolicy,
+    ) -> Result<String, String> {
+        self.validate(spawn, policy)?;
+        let encoded = crate::json::canonical_json_of(self)?;
+        crate::core::SizeLimit::RegisteredRecord.check(encoded.len())?;
+        Ok(crate::hashing::sha256_digest(encoded.as_bytes()))
+    }
+}
+
+impl RouteReadinessRegistry {
+    pub fn issue_challenge(&self, challenge_sha256: &str, checked_at: &str) -> Result<(), String> {
+        crate::core::validate_digest_form(challenge_sha256)?;
+        crate::core::validate_iso8601_z(checked_at)?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "route-readiness registry lock is poisoned".to_string())?;
+        if state.pending_challenges.contains_key(challenge_sha256)
+            || state.used_challenges.contains(challenge_sha256)
+        {
+            return Err("route-readiness challenge was already issued".to_string());
+        }
+        state
+            .pending_challenges
+            .insert(challenge_sha256.to_string(), checked_at.to_string());
+        Ok(())
+    }
+
+    pub fn register_broker_result(
+        &self,
+        evidence: ModelRouteReadiness,
+        spawn: &SpawnRequest,
+        policy: &ValidatedModelPolicy,
+    ) -> Result<String, String> {
+        evidence.validate(spawn, policy)?;
+        let sha256 = evidence.canonical_sha256(spawn, policy)?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "route-readiness registry lock is poisoned".to_string())?;
+        let issued_at = state
+            .pending_challenges
+            .get(&evidence.challenge_sha256)
+            .ok_or_else(|| "broker result does not answer a pending challenge".to_string())?;
+        if issued_at != &evidence.checked_at {
+            return Err("broker result timestamp does not match its issued challenge".to_string());
+        }
+        if state.records.contains_key(&sha256) {
+            return Err("route-readiness result is already registered".to_string());
+        }
+        state.pending_challenges.remove(&evidence.challenge_sha256);
+        state
+            .used_challenges
+            .insert(evidence.challenge_sha256.clone());
+        if evidence.status != ModelRouteReadinessStatus::Pass {
+            return Err("blocked broker readiness cannot authorize resume".to_string());
+        }
+        state
+            .records
+            .insert(sha256.clone(), RegisteredModelRouteReadiness { evidence });
+        Ok(sha256)
+    }
+
+    fn consume_for_resume(
+        &self,
+        evidence_sha256: &str,
+        spawn: &SpawnRequest,
+        policy: &ValidatedModelPolicy,
+    ) -> Result<(), String> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "route-readiness registry lock is poisoned".to_string())?;
+        let registered = state
+            .records
+            .get(evidence_sha256)
+            .ok_or_else(|| "resume readiness is absent, unregistered, or consumed".to_string())?;
+        registered.evidence.validate(spawn, policy)?;
+        if evidence_sha256 != registered.evidence.canonical_sha256(spawn, policy)? {
+            return Err("validated route-readiness hash drifted".to_string());
+        }
+        state.records.remove(evidence_sha256);
+        Ok(())
+    }
+}
+
 impl SpawnResponse {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self, spawn: &SpawnRequest) -> Result<(), String> {
         validate_session_id(&self.opencode_session_id)?;
         validate_agent_id(&self.observed_agent_id)?;
+        if self.observed_agent_id != spawn.runtime_wrapper {
+            return Err(
+                "observed response agent does not match the spawned runtime wrapper".to_string(),
+            );
+        }
         if self.principal_verdict != PrincipalVerdict::Pass {
             return Err(
                 "a returned response with a failing verdict must block startup".to_string(),
@@ -253,6 +485,13 @@ impl SpawnResponse {
             return Err("principal evidence must not be empty".to_string());
         }
         Ok(())
+    }
+
+    pub fn canonical_sha256(&self, spawn: &SpawnRequest) -> Result<String, String> {
+        self.validate(spawn)?;
+        let encoded = crate::json::canonical_json_of(self)?;
+        crate::core::SizeLimit::RegisteredRecord.check(encoded.len())?;
+        Ok(crate::hashing::sha256_digest(encoded.as_bytes()))
     }
 }
 
@@ -274,23 +513,45 @@ impl OperateResult {
     }
 }
 
-pub fn parse_spawn_request(json: &str) -> Result<SpawnRequest, String> {
+pub fn parse_spawn_request(
+    json: &[u8],
+    policy: &ValidatedModelPolicy,
+) -> Result<SpawnRequest, String> {
+    if json.len() > SPAWN_REQUEST_MAX_BYTES {
+        return Err(format!(
+            "spawn request exceeds resumable limit of {SPAWN_REQUEST_MAX_BYTES} bytes"
+        ));
+    }
     let request: SpawnRequest =
-        serde_json::from_str(json).map_err(|e| format!("spawn request rejected: {e}"))?;
-    request.validate()?;
+        crate::json::parse_canonical_json(json, crate::core::SizeLimit::RegisteredRecord)
+            .map_err(|error| format!("spawn request rejected: {error}"))?;
+    request.validate(policy)?;
     Ok(request)
 }
 
-pub fn parse_resume_request(json: &str) -> Result<ResumeRequest, String> {
+pub fn parse_resume_request(
+    json: &[u8],
+    original_spawn: &SpawnRequest,
+    original_response: &SpawnResponse,
+    readiness_registry: &RouteReadinessRegistry,
+    policy: &ValidatedModelPolicy,
+) -> Result<ResumeRequest, String> {
     let request: ResumeRequest =
-        serde_json::from_str(json).map_err(|e| format!("resume request rejected: {e}"))?;
-    request.validate()?;
+        crate::json::parse_canonical_json(json, crate::core::SizeLimit::RegisteredRecord)
+            .map_err(|error| format!("resume request rejected: {error}"))?;
+    request.validate(original_spawn, original_response, policy)?;
+    readiness_registry.consume_for_resume(
+        &request.resume_evidence_sha256,
+        original_spawn,
+        policy,
+    )?;
     Ok(request)
 }
 
-pub fn parse_spawn_response(json: &str) -> Result<SpawnResponse, String> {
+pub fn parse_spawn_response(json: &[u8], spawn: &SpawnRequest) -> Result<SpawnResponse, String> {
     let response: SpawnResponse =
-        serde_json::from_str(json).map_err(|e| format!("spawn response rejected: {e}"))?;
-    response.validate()?;
+        crate::json::parse_canonical_json(json, crate::core::SizeLimit::RegisteredRecord)
+            .map_err(|error| format!("spawn response rejected: {error}"))?;
+    response.validate(spawn)?;
     Ok(response)
 }

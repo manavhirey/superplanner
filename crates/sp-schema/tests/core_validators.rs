@@ -82,6 +82,7 @@ fn agent_and_session_and_task_ids() {
     assert!(validate_agent_id("").is_err());
     assert!(validate_session_id("ses_f6da62264ffedNODzLYU6IRTmN").is_ok());
     assert!(validate_session_id("task_123").is_err());
+    assert!(validate_session_id(&format!("ses_{}", "a".repeat(253))).is_err());
     assert!(validate_task_id("F001/T001").is_ok());
     assert!(validate_task_id("T001-fix-login").is_ok());
     assert!(validate_task_id("T001").is_ok());

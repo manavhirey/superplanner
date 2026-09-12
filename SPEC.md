@@ -402,11 +402,14 @@ against the approved design, feature, task, Gherkin criteria, and execution plan
 If Python files changed, it must load the reviewing-py-code skill as an
 additional review lens.
 
-After standard review is clear, a fresh Kimi-K3 agent in the same kind of
-private read-only envelope using
-`openrouter/moonshotai/kimi-k3` at maximum reasoning loads the
-adversarial-reviewer skill. It tries to disprove specification compliance,
-correctness, design quality, and data or network efficiency.
+After standard review is clear, a fresh `superplanner.adversarial-reviewer` in
+the same kind of private read-only envelope uses its exact installation-profile
+model and variant and loads the adversarial-reviewer skill. Its immutable
+backend-model identity differs from the builder, debugger, documenter, and
+standard reviewer backend identities; route aliases do not count as different. The
+default profile selects `openrouter/moonshotai/kimi-k3` at `max`. It tries to
+disprove specification compliance, correctness, design quality, and data or
+network efficiency.
 Both reviewers independently require their supplied and parsed full reviewed SHA
 to equal the authorization's expected full commit OID.
 
@@ -443,7 +446,7 @@ user-executed push command only when:
    user-authorized patch, candidate tree, and message, and its tree and message
    bytes equal the authorized candidate tree and message.
 4. Standard code review approves the current SHA.
-5. Kimi-K3 adversarial review approves the same SHA.
+5. The profile-selected independent adversarial reviewer approves the same SHA.
 6. The worktree contains no unreviewed changes.
 7. After both exact review records exist, the user authorizes a target-bound
    `push-presentation-request-v1`; it authorizes command presentation only.
@@ -484,27 +487,32 @@ execution or outcome field.
 
 ## Model Routing
 
-- Complex primary: `openai/gpt-5.6-sol`, variant `xhigh`.
-- Complex coordinator alternative: `zai/glm-5.3`, variant `max`.
-- Simple primary: `zai/glm-5.3`, variant `max`.
-- Simple alternatives: `openai/gpt-5.6-sol` at `medium` or
-  `openrouter/moonshotai/kimi-k3` at `max`.
-- Brainstormer: `openai/gpt-5.6-sol`, variant `high`.
-- Planner: `openai/gpt-5.6-sol`, variant `xhigh`.
-- Builder and debugger: `openai/gpt-5.6-sol`, variant `high`.
-- Standard code reviewer: `openai/gpt-5.6-sol`, variant `high`.
-- Documenter: `zai/glm-5.3`, variant `max`.
-- Adversarial reviewer: `openrouter/moonshotai/kimi-k3`, variant `max`.
+The trusted installer presents routes from canonical `model-catalog-v1` and
+records one explicit choice for every shipped agent in `model-profile-v1`.
+Catalog routes bind exact provider-qualified model IDs, immutable backend-model
+identities, non-empty variants, and allowed agent IDs. The profile binds the catalog hash and lists every agent
+exactly once. `model-installation-v1` binds both records to ordered provider
+manifests, source-template/generated-agent hashes, and canonical byte-validated
+model/variant-only delta evidence. Checked-in frontmatter
+supplies defaults: GPT-5.6 `xhigh` for the
+complex primary and planner, GPT-5.6 `high` for brainstormer, builder, debugger,
+and standard reviewer, GLM-5.3 `max` for the alternate complex entry, quick
+entry, and documenter, and Kimi-K3 `max` for adversarial review.
 
-OpenCode does not provide an automatic model fallback list in agent frontmatter.
-The GLM entry is an explicit alternative for the complex coordinator, not a
-complete provider fallback. Selecting it does not reroute OpenAI specialists;
-their routes remain in effect unless their copied agent definitions are
-separately reconfigured.
+The installer generates the private agent registry with only the selected
+model/variant deltas. Launcher, supervisor, broker, spawn/resume records, and
+external state bind all three hashes. Profile updates affect new
+workflows only; resumes require the registered original request, response hash,
+returned session ID, immutable profile, and fresh route-readiness evidence.
+Missing access blocks dispatch and never triggers fallback. The adversarial
+backend-model identity must differ from builder, debugger, documenter, and
+standard-review backend identities; aliases are not independent.
 
 ## State and Handoffs
 
 External `STATE.md` is written only by the orchestrator. It records the
+immutable model catalog/profile/installation identities and hashes, selected per-agent
+routes, readiness evidence,
 initiative, approved artifact and plan paths, mirrors of candidate approval
 records, current phase, feature and task statuses, worktree paths, task and
 invocation IDs, milestones, verification evidence, documentation status,
@@ -526,7 +534,9 @@ Superplanner is complete when a clean OpenCode installation plus the required
 trusted coordinator launcher, isolation supervisor, credential-isolating
 inference broker, and isolated `safe_git` mediator can:
 
-- Route simple and complex work to the configured models.
+- Select one catalog-authorized route for every agent during trusted
+  installation, bind each workflow and resume to its immutable profile, reject
+  route drift without fallback, and keep adversarial review model-independent.
 - Produce approved Markdown and HTML design artifacts.
 - Produce features, task definitions, and separate Gherkin acceptance files,
   then require candidate approval records from a fresh

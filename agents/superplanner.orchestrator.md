@@ -85,7 +85,7 @@ Inspect enough repository and request context to state both classifications to t
 
 Give the evidence for the classification before continuing. A spike yields a recommendation and no retained implementation. A bounded or simple request should be handled by `superplanner.quick`; recommend that entry agent and stop unless the user explicitly chooses the full pipeline. Architectural work and work with cross-cutting risk, uncertain ownership, multiple dependent deliverables, or substantial integration use this complex route. Never downgrade an active route.
 
-Confirm that the selected provider, canonical model ID, and variant are configured and authenticated before dispatch. A missing model is a blocker. `superplanner.orchestrator-glm` is only an explicitly selected coordinator fallback; it is not a fallback for OpenAI-powered specialists or for the OpenAI provider as a whole. Never claim automatic fallback.
+Confirm the immutable model catalog/profile/installation hashes and the exact selected route for this coordinator and every upcoming specialist before dispatch. Require each route to pass through the attested broker. Missing access is a blocker. Never use project configuration, prompt instructions, or automatic fallback to change a route. `superplanner.orchestrator-glm` remains a compatibility entry handle whose checked-in default is GLM; its installed route is profile-selected like every other agent.
 
 Create or resume the external operational state only after identifying the initiative and validating its location. Existing approved artifacts may resume or skip phases only after confirming that they match the current request and repository.
 
@@ -221,6 +221,15 @@ Every dispatch must be self-contained and include:
   established before startup: no persisted approvals or custom providers; stock
   tool provenance; authenticated allowlisted skills; automatic processes
   disabled; private output edit-denied; command sandbox or user-run fallback.
+- Registered model catalog/profile/installation IDs, identities, and hashes;
+  exact selected model/variant and provider manifest; source-template and
+  installed-agent IDs/hashes; canonical `agent-installation-delta-v1` SHA-256
+  and byte-validation evidence; runtime
+  wrapper name/hash and sole allowed name/mode delta; and passing route-readiness
+  evidence. Resume includes the exact original spawn request, registered
+  spawn-response hash, returned session ID, and canonical
+  `model-route-readiness-v1` hash resolved by the supervisor from fresh
+  challenge-bound broker evidence.
 - Approved design, feature, task, acceptance, and plan paths as applicable.
 - A trusted-launcher manifest of every applicable target-repository instruction
   file, including `AGENTS.md`, `CLAUDE.md`, and configured instruction files,
@@ -261,7 +270,7 @@ Never start a replacement file-writing agent while the original may still be act
 
 ## State And Handoffs
 
-Keep external `STATE.md` current with initiative, approved design path, decomposition and per-plan approval metadata, phase, feature/task status, worktrees, immutable assignments, integration bundle hashes and packaged/pre/post tree IDs, agent IDs, coordinator-persisted checkpoints, verification evidence, documentation status, exact commit authorization and resulting SHA, review SHAs and completion times, accepted risks, monitoring events, and exact next action. Every accepted-risk record contains finding ID, exact SHA and scope, explicit user evidence, consequence, and rationale.
+Keep external `STATE.md` current with initiative, immutable model catalog/profile/installation identities and hashes, selected routes and readiness evidence, approved design path, decomposition and per-plan approval metadata, phase, feature/task status, worktrees, immutable assignments, integration bundle hashes and packaged/pre/post tree IDs, agent IDs, coordinator-persisted checkpoints, verification evidence, documentation status, exact commit authorization and resulting SHA, review SHAs and completion times, accepted risks, monitoring events, and exact next action. Every accepted-risk record contains finding ID, exact SHA and scope, explicit user evidence, consequence, and rationale.
 
 Require every subagent to return the exact list-shaped schema from `@superplanner/references/handoff-contract.md`:
 

@@ -40,6 +40,25 @@ either location.
 - Design path: `docs/superplanner/<initiative-slug>/design.md`
 - Candidate Git SHA: `<git-sha-or-no-candidate>`
 
+## Model Routing
+
+- Catalog record ID/path/identity/SHA-256: `<registered-model-catalog-v1-tuple>`
+- Profile record ID/path/identity/SHA-256: `<registered-model-profile-v1-tuple>`
+- Installation record ID/path/identity/SHA-256: `<registered-model-installation-v1-tuple>`
+- Installer selection evidence: `<trusted-installation-record>`
+- Profile status: `<active|blocked>`
+- Profile update rule: `new-workflows-only`
+- Fallback policy: `none`
+
+| Agent ID | Selected provider-qualified model | Variant | Catalog-authorized | Readiness probe |
+| --- | --- | --- | --- | --- |
+| `<agent-id>` | `<model-id>` | `<variant>` | `<yes-or-no>` | `<passed-or-blocked-with-evidence>` |
+
+Every workflow pins one immutable catalog/profile/installation trio before
+coordinator startup. Resume requires the same trio. The adversarial backend-model
+identity must differ from builder, debugger, documenter, and standard-review
+backend identities; route aliases are not independent.
+
 ## Artifact Approvals
 
 Every row mirrors the durable approval record in the candidate artifact. For
@@ -192,9 +211,17 @@ invocation/checkpoint evidence.
 
 ## Invocations And Checkpoints
 
-| Dispatch ID | Workflow task ID | `opencode_session_id` | Source agent ID/hash | Runtime wrapper name/hash | Allowed name/mode delta | Model/variant | Brief path/hash | Domain | Scope | Milestones | Step/execution budget | Stop conditions | Timeout support | Checkpoint path | Invocation state | Handoff status |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `<dispatch-id>` | `<stable-workflow-task-id>` | `<generated-opencode-session-id-or-none>` | `<canonical-agent-id-and-sha256>` | `<runtime-primary-name-and-sha256>` | `<exact-name-and-subagent-to-primary-delta>` | `<canonical-model-and-variant>` | `<absolute-external-brief-path-and-sha256>` | `<domain-id>` | `<bounded-scope>` | `<ordered-milestones>` | `<step-budget-and-execution-budget-or-none>` | `<exact-stop-conditions>` | `<unsupported-or-supervisor-timeout>` | `<absolute-external-path-or-none>` | `<not-started|running|ended|timed-out|cancellation-confirmed>` | `<complete|blocked|none-yet>` |
+| Dispatch ID | Workflow task ID | `opencode_session_id` | Model catalog/profile/installation records | Source template ID/hash | Installed agent ID/hash | Runtime wrapper name/hash | Canonical installation-delta hash/evidence | Allowed runtime name/mode delta | Model/variant | Brief path/hash | Domain | Scope | Milestones | Step/execution budget | Stop conditions | Timeout support | Checkpoint path | Invocation state | Handoff status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `<dispatch-id>` | `<stable-workflow-task-id>` | `<generated-opencode-session-id-or-none>` | `<three-registered-record-ids-identities-and-hashes>` | `<source-template-agent-id-and-sha256>` | `<generated-private-agent-id-and-sha256>` | `<runtime-primary-name-and-sha256>` | `<agent-installation-delta-v1-sha256-and-byte-validation-evidence>` | `<exact-name-and-subagent-to-primary-delta>` | `<canonical-model-and-variant>` | `<absolute-external-brief-path-and-sha256>` | `<domain-id>` | `<bounded-scope>` | `<ordered-milestones>` | `<step-budget-and-execution-budget-or-none>` | `<exact-stop-conditions>` | `<unsupported-or-supervisor-timeout>` | `<absolute-external-path-or-none>` | `<not-started|running|ended|timed-out|cancellation-confirmed>` | `<complete|blocked|none-yet>` |
+
+For every returned invocation, persist the canonical spawn-response SHA-256 next
+to its generated session ID and exact request. Before resume, record fresh broker
+readiness evidence bound to the three model records and selected
+agent/model/variant, provider-manifest hash, checked-at time, one-use challenge,
+and probe hash; its canonical hash is the resume request's
+`resume_evidence_sha256`. Caller-supplied session, response, or readiness
+bindings never replace the supervisor registry.
 
 ## Harness Capabilities
 
@@ -331,7 +358,7 @@ evidence.
 | Review ID | Type | Agent ID | Model and variant | completion_time | status | review_result | reviewed_sha | Standard record ID/identity/SHA-256 | standard_approval_sha | Finding IDs | Accepted-risk finding IDs | Evidence path | Invalidated and reason |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `<review-id>` | `standard` | `<agent-id>` | `<model-id-and-variant>` | `<iso-8601>` | `<complete|blocked>` | `<approved|findings|not-completed>` | `<full-git-sha-or-none-only-if-blocked>` | `none` | `none` | `<finding-ids-or-none>` | `<accepted-finding-ids-or-none>` | `<absolute-operational-handoff-or-report-path>` | `<no-or-yes-and-reason>` |
-| `<review-id>` | `adversarial` | `<agent-id>` | `openrouter/moonshotai/kimi-k3 max` | `<iso-8601>` | `<complete|blocked>` | `<approved|findings|not-completed>` | `<full-git-sha-or-none-only-if-blocked>` | `<registered-standard-review-record-id-path-identity-and-recomputed-sha256-or-none-only-if-blocked>` | `<standard-approved-full-git-sha-or-none-only-if-blocked>` | `<finding-ids-or-none>` | `<accepted-finding-ids-or-none>` | `<absolute-operational-handoff-or-report-path>` | `<no-or-yes-and-reason>` |
+| `<review-id>` | `adversarial` | `<agent-id>` | `<profile-selected-independent-model-id-and-variant>` | `<iso-8601>` | `<complete|blocked>` | `<approved|findings|not-completed>` | `<full-git-sha-or-none-only-if-blocked>` | `<registered-standard-review-record-id-path-identity-and-recomputed-sha256-or-none-only-if-blocked>` | `<standard-approved-full-git-sha-or-none-only-if-blocked>` | `<finding-ids-or-none>` | `<accepted-finding-ids-or-none>` | `<absolute-operational-handoff-or-report-path>` | `<no-or-yes-and-reason>` |
 
 External state updates do not invalidate review. Any candidate-file change does.
 
@@ -353,7 +380,7 @@ When no accepted risk exists, record `none` and add no risk row.
 - Commit tree equals authorized candidate/staged trees: `<yes-or-no-and-evidence>`
 - Commit message equals authorized exact bytes: `<yes-or-no-and-evidence>`
 - Standard review approves candidate SHA: `<yes-or-no>`
-- Kimi adversarial review approves same SHA: `<yes-or-no>`
+- Profile-selected independent adversarial review approves same SHA: `<yes-or-no>`
 - Worktree has no unreviewed changes: `<supervisor-produced-immediate-clean-worktree-snapshot-id-identity-hash-index-tree-equality-and-no-tracked-untracked-or-ignored-difference-or-no>`
 - Explicit user push request, authorizing presentation only: `<registered-immutable-push-presentation-request-v1-id-identity-recomputed-hash-authenticated-user-evidence-exact-commit-review-records-destination-refspec-and-no-force-bindings-or-not-requested>`
 - Destination remote name and single closed-grammar HTTPS push URL: `<name-and-url-or-not-eligible>`

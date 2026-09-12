@@ -37,7 +37,7 @@ initiatives:
 
 | Phase | Owning role | Output or decision |
 | --- | --- | --- |
-| 0. Intake and routing | `superplanner.orchestrator`, `superplanner.orchestrator-glm`, or `superplanner.quick` | Spike, bounded, or architectural route; simple or complex model route |
+| 0. Intake and routing | `superplanner.orchestrator`, `superplanner.orchestrator-glm`, or `superplanner.quick` | Spike, bounded, or architectural workflow and selected entry agent |
 | 1. Brainstorm and design | `superplanner.brainstormer`, coordinated by a complex orchestrator | Approved `design.md` and visual companion `design.html` |
 | 2. Feature and task definition | `superplanner.planner` | Independently valuable feature, task, and Gherkin files; fresh `RECORD_DECOMPOSITION_APPROVAL` invocation after user approval and before `PLAN` |
 | 3. Execution planning | `superplanner.builder` in `PLAN` mode | One implementation-ready durable plan; fresh `RECORD_PLAN_APPROVAL` invocation after user approval and before `EXECUTE` |
@@ -90,16 +90,15 @@ commit is automatic; Superplanner never executes a push.
 
 ## Model Routing
 
-OpenCode agent frontmatter has one model route and no automatic fallback list,
-so the second complex entry is an explicit coordinator alternative.
+Trusted installation selects one registered route for every shipped agent and
+records immutable catalog, profile, and generated-installation manifests.
+Checked-in frontmatter provides these defaults:
 
 | Route | Model | Variant |
 | --- | --- | --- |
 | Complex primary (`superplanner.orchestrator`) | `openai/gpt-5.6-sol` | `xhigh` |
 | Complex coordinator alternative (`superplanner.orchestrator-glm`) | `zai/glm-5.3` | `max` |
 | Simple primary (`superplanner.quick`) | `zai/glm-5.3` | `max` |
-| Simple alternative | `openai/gpt-5.6-sol` | `medium` |
-| Simple alternative | `openrouter/moonshotai/kimi-k3` | `max` |
 | Brainstormer | `openai/gpt-5.6-sol` | `high` |
 | Planner | `openai/gpt-5.6-sol` | `xhigh` |
 | Builder and debugger | `openai/gpt-5.6-sol` | `high` |
@@ -107,11 +106,14 @@ so the second complex entry is an explicit coordinator alternative.
 | Documenter | `zai/glm-5.3` | `max` |
 | Adversarial review | `openrouter/moonshotai/kimi-k3` | `max` |
 
-The GLM route is an alternative complex coordinator, not a complete provider
-fallback or retry behavior. Selecting it leaves OpenAI specialist routes in
-place unless their copied agent definitions are separately reconfigured. The
-adversarial pass is intentionally routed to a fresh Kimi-K3 context after the
-standard review is clear.
+The installer may replace each default with a role-compatible route from its
+canonical catalog. It generates and attests the private installed agent files;
+project configuration cannot override them. Launcher, supervisor, broker, and
+external state bind every workflow to all three record hashes. Missing access
+blocks without fallback. Existing resumes keep their original profile. The
+adversarial backend-model identity must differ from builder, debugger,
+documenter, and standard-review backend identities; aliases are not independent,
+and the default independent route is Kimi-K3.
 
 ## Artifacts And State
 
@@ -257,9 +259,9 @@ Review follows the explicit commit transition and is ordered and read-only:
    add the `reviewing-py-code` lens and it returns the canonical reviewer result.
 2. A finding is fixed or explicitly accepted for its exact SHA and scope. Risk
    acceptance is not approval; a fresh standard reviewer must still approve.
-3. Only after standard review is clear, a fresh Kimi-K3 reviewer loads
-   `adversarial-reviewer` and tries to disprove specification compliance,
-   correctness, design quality, and data or network efficiency.
+3. Only after standard review is clear, a fresh profile-selected independent
+   reviewer loads `adversarial-reviewer` and tries to disprove specification
+   compliance, correctness, design quality, and data or network efficiency.
 4. Adversarial findings follow the same accepted-risk rule and require a fresh
    adversarial approval. Reviewers never edit the reviewed code.
 
