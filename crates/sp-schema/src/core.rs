@@ -150,11 +150,14 @@ pub fn validate_agent_id(value: &str) -> Result<(), String> {
     if !bytes[0].is_ascii_lowercase() && !bytes[0].is_ascii_digit() {
         return Err(format!("agent_id must start with [a-z0-9]: {value:?}"));
     }
-    if !bytes
-        .iter()
-        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'-')
-    {
-        return Err(format!("agent_id must match [a-z0-9-]: {value:?}"));
+    let allowed = |b: &u8| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'-' || *b == b'.';
+    if !bytes.iter().all(allowed) {
+        return Err(format!("agent_id must match [a-z0-9-.]: {value:?}"));
+    }
+    if *bytes.last().unwrap() == b'.' || value.contains("..") {
+        return Err(format!(
+            "agent_id must not end with a dot or contain consecutive dots: {value:?}"
+        ));
     }
     Ok(())
 }
