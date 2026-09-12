@@ -10,6 +10,7 @@ pub const OPERATION_OUTPUT_LEAF_MAX_BYTES: usize = 64 * 1024 * 1024;
 pub const REGISTERED_RECORD_MAX_BYTES: usize = 8 * 1024 * 1024;
 pub const APPROVAL_ARTIFACT_MAX_BYTES: usize = 4 * 1024 * 1024;
 pub const STATE_MAX_BYTES: usize = 8 * 1024 * 1024;
+pub const SESSION_ID_MAX_BYTES: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SizeLimit {
@@ -214,6 +215,11 @@ pub fn validate_lease_id(value: &str) -> Result<(), String> {
 }
 
 pub fn validate_session_id(value: &str) -> Result<(), String> {
+    if value.len() > SESSION_ID_MAX_BYTES {
+        return Err(format!(
+            "session id exceeds {SESSION_ID_MAX_BYTES} bytes: {value:?}"
+        ));
+    }
     let rest = value
         .strip_prefix("ses_")
         .ok_or_else(|| format!("session id must start with ses_: {value:?}"))?;

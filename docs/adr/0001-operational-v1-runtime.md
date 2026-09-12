@@ -22,7 +22,7 @@ be honestly attested on stock macOS.
 
 ### D1: Implementation language — Rust
 
-All trusted runtime components are implemented in Rust.
+All trusted runtime components will be implemented in Rust.
 
 - **Rust (chosen):** memory-safe systems language with no runtime GC pauses;
   zero-dependency first-pass crates keep the attestation surface tiny; strong
@@ -77,7 +77,28 @@ Supporting crates: `sp-schema` (validators, canonical forms),
 `sp-gix` (trusted non-Git Git-format parsers), `sp-state` (external STATE.md
 validation), `sp-installer` (install + readiness probes).
 
-### D4: Trust boundaries and principals
+### D4: Model route selection
+
+`sp-installer` owns installation-time model selection. It presents only exact
+provider/model/variant routes from a canonical role-aware catalog and records one
+selection for every shipped agent in an immutable profile. A third installation
+record binds provider manifests, source-template hashes, generated-agent hashes,
+byte-validated model/variant-only delta evidence, backend-model identities, and
+selected routes. Current frontmatter routes remain defaults. Launcher,
+supervisor, broker, generated private agent registry, and external state bind all
+three record hashes. Profile changes affect new workflows only; active resumes
+retain their original policy. Missing access blocks without fallback. The
+adversarial backend-model identity must differ from builder, debugger,
+documenter, and standard-review backend identities; aliases are not independent.
+
+Per-prompt selection and project-config overrides are rejected because neither
+can provide stable attestation across dispatch and resume.
+
+This section defines required behavior. `sp-installer`, `sp-launcher`,
+`sp-supervisor`, and `sp-broker` remain scaffolds until their roadmap issues
+implement it.
+
+### D5: Trust boundaries and principals
 
 | Data | Reader/writer | Denied to |
 | --- | --- | --- |
@@ -87,7 +108,7 @@ validation), `sp-installer` (install + readiness probes).
 | Operational state (`STATE.md`) | coordinator only | workers, reviewers |
 | Immutable evidence | registry consumers with rehash | coordinator (IDs only), workers |
 
-### D5: Dependency and toolchain policy
+### D6: Dependency and toolchain policy
 
 Pinned stable Rust toolchain via `rust-toolchain.toml`; committed
 `Cargo.lock`; minimal external dependencies, each justified in the ADR that

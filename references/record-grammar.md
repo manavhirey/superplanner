@@ -63,7 +63,44 @@ within one record.
   `T<nnn>-<slug>` as recorded in the initiative's task index; it is never an
   OpenCode session ID and never substitutes for one.
 - `opencode_session_id`: the session identifier returned by the supervisor
-  result, matching `^ses_[A-Za-z0-9_-]+$` when present.
+  result, matching `^ses_[A-Za-z0-9_-]+$` and limited to 256 bytes when present.
+
+## Model Routes And Profiles
+
+- A model ID has at least two `/`-separated non-empty segments. Every segment
+  uses lowercase ASCII letters, digits, `.`, `_`, or `-`, and is neither `.` nor
+  `..`. The first segment is the exact installation-defined provider ID.
+- A variant is one non-empty segment under the same character grammar.
+- `model-catalog-v1` routes are unique and ordered by model ID, then variant.
+  Each route binds a canonical provider-qualified immutable backend-model
+  identity. Each `allowed_agent_ids` list is unique and ordered by agent ID. The
+  complete catalog covers every shipped agent.
+- `model-profile-v1` binds the catalog's canonical bare SHA-256 digest and lists
+  every shipped agent exactly once in agent-ID order. Every selected route must
+  be authorized for that agent by the bound catalog.
+- `model-installation-v1` binds the catalog and profile digests. Provider
+  manifests are unique and ordered by provider ID. Generated-agent manifests
+  list every shipped agent once in agent-ID order and bind its selected route,
+  source-template digest, installed-agent digest, and canonical
+  `agent-installation-delta-v1` digest. Trusted installation validates both byte
+  strings and permits only exact `model` and `variant` frontmatter replacement.
+  Every catalog provider has one exact installation manifest. Provider package,
+  version, and endpoint fields use printable non-whitespace ASCII. Broker
+  endpoints use `http` on explicit `127.0.0.1` or `[::1]`, a port in `1..65535`,
+  and a fixed absolute path with no empty, `.`, or `..` segment and no query,
+  fragment, percent encoding, or backslash.
+- The adversarial-reviewer backend-model identity differs from the builder,
+  debugger, documenter, and standard-reviewer backend-model identities. A route
+  alias or variant for the same backend is insufficient.
+- A resume request binds the registered original spawn request, returned session
+  ID, canonical spawn-response SHA-256, and `resume_evidence_sha256`. The latter
+  is the canonical SHA-256 of `model-route-readiness-v1`, which binds all three
+  policy hashes, agent/model/variant, provider-manifest hash, UTC `checked_at`,
+  one-use challenge hash, probe hash, and `pass|blocked` status. Only a passing
+  broker result answering a pending supervisor-issued challenge is registered;
+  a blocked result burns that challenge without creating a record, and resume
+  atomically consumes a passing record. The supervisor resolves these records
+  from its registry rather than trusting caller-selected evidence.
 
 ## Times
 
@@ -83,6 +120,7 @@ Hard maxima; exceeding any limit is a validation blocker, never a truncation:
 | --- | --- |
 | Canonical handoff record (worker or reviewer) | 256 KiB |
 | Specialist brief | 4 MiB |
+| Canonical spawn request | 8 MiB minus 1 KiB reserved for its resume envelope |
 | `operate` request or result | 1 MiB |
 | Any single operation output leaf | 64 MiB |
 | Any registered immutable record | 8 MiB |

@@ -47,8 +47,9 @@ The full flow is:
     exact author and committer dates with numeric timezones, and expected full
     OID, then let the
     user-facing coordinator enter `COMMIT` for only those in-scope changes.
-12. Run standard review, then Kimi-K3 adversarial review, against the same exact
-    commit SHA, which must equal the authorization's expected full OID.
+12. Run standard review, then profile-selected independent adversarial review,
+    against the same exact commit SHA, which must equal the authorization's
+    expected full OID.
 13. After every gate passes and the user authorizes the target-bound presentation
     record, use only the trusted output guard to release the exact registered
     non-force push command bytes for possible user execution.
@@ -70,7 +71,7 @@ commits automatically; it never executes a push.
 
 The filename and frontmatter name are the OpenCode agent handle.
 
-| Agent | Mode and responsibility | Model route |
+| Agent | Mode and responsibility | Default model route |
 | --- | --- | --- |
 | `superplanner.orchestrator` | Primary full-flow coordinator | `openai/gpt-5.6-sol`, `xhigh` |
 | `superplanner.orchestrator-glm` | Alternative complex coordinator; same gates | `zai/glm-5.3`, `max` |
@@ -147,40 +148,43 @@ own subagents or edit external `STATE.md`.
 - `sha256sum` or `shasum` for byte-exact non-Git artifact and evidence
   checksums; setup blocks if neither command is available. Repository commit,
   tree, and blob OIDs use the repository's detected SHA-1 or SHA-256 format.
-- Authenticated broker access to every provider used by the selected flow. The
+- Authenticated broker access to every provider selected anywhere in the
+  installation profile. The
   launcher, supervised specialists, and reviewers all use the
   credential-isolating inference broker and never receive provider credentials.
-  Confirm every canonical route through the launcher before starting.
+  Confirm every selected profile route through the launcher before starting.
 
-The canonical routes are:
+The built-in catalog routes are:
 
-| Purpose | Route | Variant |
+| Model and variant | Backend-model identity | Allowed agents |
 | --- | --- | --- |
-| Complex primary | `openai/gpt-5.6-sol` | `xhigh` |
-| Complex coordinator alternative | `zai/glm-5.3` | `max` |
-| Simple primary | `zai/glm-5.3` | `max` |
-| Simple alternative | `openai/gpt-5.6-sol` | `medium` |
-| Simple alternative | `openrouter/moonshotai/kimi-k3` | `max` |
-| Adversarial reviewer | `openrouter/moonshotai/kimi-k3` | `max` |
+| `openai/gpt-5.6-sol` `high` | `openai/gpt-5.6-sol` | adversarial reviewer, brainstormer, builder, standard reviewer, debugger, documenter |
+| `openai/gpt-5.6-sol` `medium` | `openai/gpt-5.6-sol` | documenter, quick coordinator |
+| `openai/gpt-5.6-sol` `xhigh` | `openai/gpt-5.6-sol` | both complex coordinators, planner, quick coordinator |
+| `openrouter/moonshotai/kimi-k3` `max` | `moonshotai/kimi-k3` | adversarial reviewer, brainstormer, builder, standard reviewer, debugger, documenter, planner, quick coordinator |
+| `zai/glm-5.3` `max` | `zai/glm-5.3` | all ten agents |
 
-OpenCode agent frontmatter has no automatic fallback list. Selecting
-`superplanner.orchestrator-glm` changes only the complex coordinator; the
-specialists still use the routes shown in the agent table. Override copied
-agent definitions deliberately if a provider is unavailable. Do not silently
-substitute the adversarial reviewer or weaken its `max` route.
+Operational runtime requires the trusted installer to display every
+role-compatible route registered in `model-catalog-v1`, record one explicit
+selection for each of the ten agents in `model-profile-v1`, and bind generated
+  agents, exact model/variant-only delta evidence, and provider manifests in
+  `model-installation-v1`. Registered catalogs
+may contain models beyond these defaults. The installer generates a private
+agent registry with those exact model/variant selections. Project configuration
+and manual prompt instructions cannot override it.
 
-The GLM coordinator is therefore an alternative complex entry, not a complete
-provider fallback. OpenAI specialist routes remain required unless each is
-separately reconfigured.
+Launcher, supervisor, broker, spawn/resume evidence, and external state bind the
+catalog/profile/installation hashes and exact selected route. A profile update applies only
+to new workflows. Missing access blocks dispatch; no fallback exists. The
+adversarial backend-model identity must differ from builder, debugger,
+documenter, and standard-review backend identities; aliases do not establish
+independence. Kimi-K3 `max` remains the default adversarial route, not a mandatory
+route.
 
-The approved OpenAI specialist routes are fixed by role: the brainstormer and
-standard code reviewer use `high`, the planner uses `xhigh`, and the builder and
-debugger use `high`. These match the installed agent definitions above.
-
-An unmodified implementation flow uses all three providers: OpenAI for most
-specialists, ZAI for documentation and the simple/alternative entries, and
-Moonshot for final adversarial review. A quick spike can stop before those
-specialists are needed.
+An unmodified default flow uses all three providers: OpenAI for most
+specialists, ZAI for documentation and simple/alternative entries, and Moonshot
+for adversarial review. A custom profile may use another registered combination
+that satisfies role and independence checks.
 
 ## Install In A Project
 
@@ -197,6 +201,13 @@ cp -i "$PACK"/agents/*.md .opencode/agents/
 
 `cp -i` asks before replacing an existing same-named agent. Resolve collisions
 intentionally rather than overwriting local customizations.
+
+These copied definitions contain default routes for advisory/manual discovery.
+Operational model selection occurs only through the trusted installer, which
+writes the immutable catalog/profile/installation records and generated private
+registry outside project control. `sp-installer` is currently a scaffold; issue
+#14 must implement this interaction before operational model selection is
+available. Editing copied frontmatter does not create a trusted profile.
 
 Next, create `opencode.json` in the target repository if it does not exist. If
 `opencode.json` or `opencode.jsonc` already exists, manually merge the `skills`
@@ -282,13 +293,16 @@ existing approved artifact paths. For a non-interactive entry:
 ```
 
 Use `superplanner.orchestrator-glm` in the same commands when explicitly
-selecting the alternative complex coordinator. The coordinator states its
+selecting the compatibility alternative complex entry. Its checked-in route
+defaults to GLM, but trusted installation may select another registered route.
+The coordinator states its
 classification before proceeding, obtains design approval, records
 feature/task/Gherkin approval through a fresh planner
 `RECORD_DECOMPOSITION_APPROVAL` invocation, and records each approved plan
 through a fresh builder `RECORD_PLAN_APPROVAL` invocation. It maintains external
 `STATE.md` mirrors and resumes valid existing artifacts rather than recreating
-them. Selecting this entry does not reroute its OpenAI specialists.
+them. Selecting this entry does not change any other agent's installed profile
+route.
 
 After implementation, integrated verification, documentation sync, and any
 verification refresh required by documentation changes, the complex coordinator
@@ -550,8 +564,9 @@ Gate order cannot be reversed or combined:
    numeric-timezone author and committer dates, and expected full OID,
    coordinator `COMMIT`, and fresh standard review.
 5. Only after standard approval, run `superplanner.adversarial-reviewer` in a new
-   private read-only reviewer envelope on Kimi-K3 `max` with the same SHA and
-   independently require it to equal the authorization's expected full OID.
+   private read-only reviewer envelope on its profile-selected independent route
+   with the same SHA and independently require it to equal the authorization's
+   expected full OID.
 6. Resolve or explicitly accept its findings for the exact SHA and scope, then
    run a fresh adversarial reviewer until it approves. Any later candidate
    change invalidates both approvals and repeats that complete replacement

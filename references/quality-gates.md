@@ -326,11 +326,15 @@ Its handoff uses `status: complete` with `review_result: approved|findings`, or
 exact full `reviewed_sha`; a blocked review may record `none` only when no full
 SHA could be established and its blocker explains why.
 
-## 5. Kimi Adversarial Review Gate
+## 5. Independent Adversarial Review Gate
 
-After standard approval, start a fresh `openrouter/moonshotai/kimi-k3` agent at
-variant `max` in a new attested private read-only reviewer envelope and load the
-authenticated `adversarial-reviewer` skill. It attempts to disprove:
+After standard approval, start `superplanner.adversarial-reviewer` at its exact
+installation-profile model and variant in a new attested private read-only
+reviewer envelope and load the authenticated `adversarial-reviewer` skill. Its
+immutable backend-model identity must differ from the builder, debugger,
+documenter, and standard reviewer backend identities; route aliases are not
+independent. The default profile uses
+`openrouter/moonshotai/kimi-k3` at variant `max`. It attempts to disprove:
 
 - Specification and acceptance compliance.
 - Functional correctness and failure behavior.
@@ -404,7 +408,7 @@ conditions are true:
    user-authorized patch, candidate tree, and message, and its commit tree and
    message bytes equal the authorized candidate tree and message.
 4. Standard review approves the current SHA.
-5. Kimi adversarial review approves the same SHA.
+5. The profile-selected independent adversarial review approves the same SHA.
 6. The worktree contains no unreviewed changes.
 7. After both exact review records exist, the user explicitly authorizes the
    target-bound `push-presentation-request-v1` record described below. That

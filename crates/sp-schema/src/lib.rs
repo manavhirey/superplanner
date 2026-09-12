@@ -11,6 +11,7 @@ pub mod handoff;
 pub mod hashing;
 pub mod identity;
 pub mod json;
+pub mod model_routing;
 pub mod push_custody;
 pub mod push_encoding;
 pub mod supervisor;
@@ -35,16 +36,22 @@ pub use hashing::{
     approval_content_id, bounded_brief_content_id, sha256_digest, MarkerKind, MarkerPair,
 };
 pub use identity::{FilesystemIdentity, RegistryIdentity};
+pub use model_routing::{
+    default_model_catalog, default_model_profile, AgentModelSelection, InstalledAgentManifest,
+    ModelCatalog, ModelInstallation, ModelProfile, ModelRouteRegistration, ProviderManifest,
+    ValidatedModelPolicy, AGENT_INSTALLATION_DELTA_TAG, MODEL_CATALOG_TAG, MODEL_INSTALLATION_TAG,
+    MODEL_PROFILE_TAG, REQUIRED_AGENT_IDS,
+};
 pub use push_custody::{
     bind_request_to_authorization, validate_push_refspec, validate_push_url, PushEligibility,
     PushPresentationRequest, ResolvedInput,
 };
 pub use push_encoding::{decode, encode, Decoded, Field};
 pub use supervisor::{
-    parse_resume_request, parse_spawn_request, parse_spawn_response, validate_route,
-    IsolationEvidence, OperateOperation, OperateResult, OperateStatus, PrincipalVerdict,
-    PrivateRoots, ProcessStatus, ProviderManifest, ResumeRequest, SkillEntry, SpawnRequest,
-    SpawnResponse,
+    parse_resume_request, parse_spawn_request, parse_spawn_response, IsolationEvidence,
+    ModelRouteReadiness, ModelRouteReadinessStatus, OperateOperation, OperateResult, OperateStatus,
+    PrincipalVerdict, PrivateRoots, ProcessStatus, ResumeRequest, RouteReadinessRegistry,
+    SkillEntry, SpawnRequest, SpawnResponse, MODEL_ROUTE_READINESS_TAG,
 };
 pub use verification::{
     bind_verification_to_documentation, DocumentationRecord, DocumentationStatus,

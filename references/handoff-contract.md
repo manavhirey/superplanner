@@ -94,19 +94,29 @@ temp, config-file, and database paths, not only the requested environment.
 Because OpenCode CLI does not reject `mode: subagent` for `--agent` — it
 warns and silently falls back to the default primary agent, which has a
 different permission surface — the supervisor never launches a subagent
-definition directly. It generates a runtime primary wrapper from the exact
-specialist definition, changing only `mode` and a collision-free runtime
-name. It hashes
-both definitions and the resolved permission manifest, selects that wrapper
+definition directly. The trusted installer first generates each private source
+agent definition from the attested shipped template, changing only `model` and
+`variant` to the exact `model-profile-v1` selection. The supervisor generates a
+runtime primary wrapper from that installed definition, changing only `mode` and
+a collision-free runtime name. It hashes the source template, model catalog,
+model profile, installation manifest, installed definition, runtime wrapper, and
+resolved permission manifest, selects that wrapper
 explicitly, and verifies the session's actual agent before accepting output. It
 returns the exact OpenCode session ID and terminal result. Persist the source
-agent ID/hash, runtime wrapper name/hash, sole allowed name/mode delta,
-model/variant, resolved-permission-manifest hash, and observed session-agent
-evidence. A resume starts a new process with the same private `HOME`, exact
+template ID/hash, installed-agent ID/hash, runtime wrapper name/hash, canonical
+`agent-installation-delta-v1` SHA-256 plus byte-validation evidence, sole runtime
+name/mode delta, model catalog/profile/installation IDs, identities, and hashes,
+selected model/variant,
+resolved-permission-manifest hash, and observed session-agent evidence. A resume
+starts a new process with the same private `HOME`, exact
 role-private roots, startup-variable/resolved-path manifest, session ID,
-source/wrapper identities, model/variant, and permissions; first proves every
-identity remains exact and that no approval entry or provider drift appeared;
-and never overlaps the prior invocation. Record that returned session ID as
+source/wrapper identities, catalog/profile/installation, model/variant, and
+permissions; first proves the nested spawn request byte-matches the registered
+original spawn, the supplied session ID and canonical response hash match the
+registered spawn result, the observed result agent equals the spawned runtime
+wrapper, every identity remains exact, fresh broker-readiness evidence remains
+bound to the original policy and route, and no approval entry or provider drift
+appeared; and never overlaps the prior invocation. Record that returned session ID as
 `opencode_session_id`.
 
 The launched OpenCode process must run either as a distinct OS security
@@ -130,7 +140,13 @@ project/global custom tools, plugins, MCP, and provider overrides; reject every
 duplicate tool ID; install only a trusted provider implementation pinned by
 package/version/hash and its sole broker endpoint; and verify the primitive's
 executable path and SHA-256 before coordinator
-startup. It is not a project OpenCode custom tool and cannot be replaced by one.
+startup. Before coordinator startup, the trusted installer must have obtained one
+explicit route selection for every shipped agent from the canonical registered
+catalog and published immutable `model-catalog-v1`, `model-profile-v1`, and
+`model-installation-v1` records outside project control. The launcher resolves
+and validates this policy once; spawn callers supply only its registered hashes,
+not replacement policy bytes. It is not a project OpenCode custom tool and cannot
+be replaced by one.
 It starts the coordinator through `env -i` with the same private `HOME`, five
 root bindings, pinned private OpenCode config/database, disable flags, broker-only
 provider route, scrubbed overrides, and resolved-path attestation required above.
@@ -146,14 +162,23 @@ That service is started before interpreting mediator shell code through the
 attested absolute `/usr/bin/env -i ... /bin/bash --noprofile --norc` boundary;
 direct `bash <mediator-script>` startup is rejected and its exact argv/environment
 hash is persisted.
-Its `spawn` request contains agent ID, canonical model/variant, exact worktree,
+Its `spawn` request contains agent ID, canonical model/variant, exact model
+catalog/profile/installation hashes, source-template and installed-agent hashes,
+exact worktree,
 private `HOME`, all five private roots, resolved OpenCode path manifest,
 immutable brief bytes/hash, source-agent and runtime-wrapper identities,
 resolved permission hash, skill manifest, provider manifest, credential-identity/alias
 manifest, sandbox profile, and the distinct-principal or kernel-enforced
 same-principal isolation evidence;
-its `resume` request additionally contains the returned session ID and exact
-evidence. Both return the session ID, observed session-agent identity, terminal
+its `resume` request additionally contains the returned session ID, canonical
+spawn-response hash, and `resume_evidence_sha256`, which identifies canonical
+`model-route-readiness-v1` evidence bound to the three policy hashes, selected
+agent/model/variant, provider-manifest hash, checked-at time, one-use challenge,
+probe, and passing status. The supervisor registers only a passing broker result
+for its pending challenge and atomically consumes that readiness record during
+resume. It resolves the original request and result from its trusted registry
+rather than accepting caller-selected bindings. Both return the session ID,
+observed session-agent identity, terminal
 handoff bytes, process status, principal-isolation verdict/evidence, and other
 attestation evidence.
 
@@ -229,7 +254,11 @@ rejected.
 The sandbox exposes a supervisor-owned inference broker over a dedicated local
 IPC endpoint. Provider credentials and network sockets remain outside the
 OpenCode process; the broker accepts only canonical model requests for the
-recorded provider/model/variant and returns model responses. Tools, plugins,
+catalog-registered and profile-selected provider/model/variant and returns model
+responses. The adversarial selection must use a different immutable backend-model
+identity from the builder, debugger, documenter, and standard reviewer; route
+aliases are not independent. Missing access blocks
+dispatch; no fallback or runtime substitution exists. Tools, plugins,
 project processes, and model-generated commands cannot access the broker
 credential, general network, or another provider endpoint. Missing broker,
 spawn, re-root, result, or session-resume support blocks the dispatch.
