@@ -4,3 +4,6 @@ description = "Schemas and canonical validators for every Superplanner record"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+sha2 = "0.10"
